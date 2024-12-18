@@ -27,18 +27,37 @@ func (d *Docker) RecreateContainers(containerNames []string) error {
 	pathToDockerCompose := viper.GetString("pathToDockerCompose")
 	uniqueContainers := d.UniqueContainerNames(containerNames)
 
-	args := []string{"compose", "-f", pathToDockerCompose, "up", "-d", "--force-recreate"}
-	args = append(args, uniqueContainers...)
+	// Define the sequence of commands to execute
+	commands := []struct {
+		args       []string
+		desc       string
+		errMessage string
+	}{
+		{
+			args:       []string{"rm", "-f"},
+			desc:       "Stopping and removing containers",
+			errMessage: "Error stopping and removing containers",
+		},
+		{
+			args:       []string{"compose", "-f", pathToDockerCompose, "up", "-d", "--force-recreate"},
+			desc:       "Recreating containers",
+			errMessage: "Error recreating containers",
+		},
+	}
 
-	cmd := exec.Command("docker", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Execute each command in sequence
+	for _, cmd := range commands {
+		args := append(cmd.args, uniqueContainers...)
 
-	fmt.Printf("Running docker-compose up -d --force-recreate %v\n", containerNames)
+		execCmd := exec.Command("docker", args...)
+		execCmd.Stdout = os.Stdout
+		execCmd.Stderr = os.Stderr
 
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return err
+		fmt.Printf("%s: %s\n", cmd.desc, execCmd.String())
+		if err := execCmd.Run(); err != nil {
+			fmt.Printf("%s: %v\n", cmd.errMessage, err)
+			return err
+		}
 	}
 
 	fmt.Println("Docker containers recreated successfully!")
