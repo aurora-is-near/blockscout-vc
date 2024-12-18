@@ -20,10 +20,13 @@ FROM alpine:3.17
 
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates curl
+# Install runtime dependencies including docker cli
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    docker-cli
 
-# Copy the binary and goose from the builder stage
+# Copy the binary from the builder stage
 COPY --from=builder /app/app /app/app
 
 # Ensure the binary is executable
