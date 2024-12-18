@@ -68,15 +68,22 @@ func (w *Worker) process(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case job := <-w.jobs:
-			err := w.docker.RecreateContainers(job.ContainerNames)
-			if err != nil {
-				log.Printf("failed to recreate containers: %v", err)
-				continue
-			}
+			jobKey := w.makeKey(job.ContainerNames)
+			// Using an immediately invoked function to ensure defer runs after each job
+			// Without this, defer would only run when the process function returns
+			func() {
+				defer func() {
+					w.jobSetMux.Lock()
+					delete(w.jobSet, jobKey)
+					w.jobSetMux.Unlock()
+				}()
 
-			w.jobSetMux.Lock()
-			delete(w.jobSet, w.makeKey(job.ContainerNames))
-			w.jobSetMux.Unlock()
+				err := w.docker.RecreateContainers(job.ContainerNames)
+				if err != nil {
+					log.Printf("failed to recreate containers: %v", err)
+					return
+				}
+			}()
 		}
 	}
 }

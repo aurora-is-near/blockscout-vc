@@ -20,11 +20,12 @@ FROM alpine:3.17
 
 WORKDIR /app
 
-# Install runtime dependencies including docker cli
+# Install runtime dependencies including docker and docker compose plugin
 RUN apk add --no-cache \
     ca-certificates \
     curl \
-    docker-cli
+    docker-cli \
+    docker-cli-compose
 
 # Copy the binary from the builder stage
 COPY --from=builder /app/app /app/app
