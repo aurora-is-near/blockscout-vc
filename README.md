@@ -25,11 +25,11 @@ The service can be deployed using Docker Compose. Below is an example configurat
 
 ```yaml
 services:
-  blockscout-vc-sidecar:
+  sidecar:
     image: ghcr.io/aurora-is-near/blockscout-vc:latest
-    container_name: blockscout-vc
+    container_name: sidecar
     pull_policy: always
-    command: ["--config", "/app/config/local.yaml"]
+    command: ["sh", "-c", "/app/app --config /app/config/local.yaml"]
     volumes:
       - ./config:/app/config
       - /var/run/docker.sock:/var/run/docker.sock
