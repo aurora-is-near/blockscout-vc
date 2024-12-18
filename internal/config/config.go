@@ -6,12 +6,19 @@ import (
 	"github.com/spf13/viper"
 )
 
-// InitConfig initializes the application configuration using viper
-// It looks for a configuration file named 'local.yaml' in the config directory
-func InitConfig() {
-	viper.AddConfigPath("config") // path to look for the config file in
-	viper.SetConfigName("local")  // name of the config file (without extension)
-	viper.SetConfigType("yaml")   // type of the config file
+// InitConfig initializes the application configuration using viper.
+// If configPath is provided, it will use that specific file,
+// otherwise it will look for 'local.yaml' in the config directory
+func InitConfig(configPath string) {
+	if configPath != "" {
+		// Use specified config file
+		viper.SetConfigFile(configPath)
+	} else {
+		// Default config location
+		viper.AddConfigPath("config")
+		viper.SetConfigName("local")
+	}
+	viper.SetConfigType("yaml")
 
 	// Enable automatic environment variable binding
 	viper.AutomaticEnv()

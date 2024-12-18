@@ -16,15 +16,20 @@ import (
 	"github.com/spf13/viper"
 )
 
-// StartSidecarCmd creates and returns the sidecar command
+// StartSidecarCmd creates and returns the sidecar command.
+// It monitors database changes and manages container configurations.
 func StartSidecarCmd() *cobra.Command {
 	startServer := &cobra.Command{
 		Use:   "sidecar",
 		Short: "Start sidecar",
 		Long:  `Starts sidecar to listen for changes in the database and recreate the containers`,
-		// Initialize configuration before running
 		PreRun: func(cmd *cobra.Command, args []string) {
-			config.InitConfig()
+			configPath, err := cmd.Flags().GetString("config")
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			config.InitConfig(configPath)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create a cancellable context
@@ -66,6 +71,6 @@ func StartSidecarCmd() *cobra.Command {
 			return nil
 		},
 	}
-
+	startServer.PersistentFlags().StringP("config", "c", "", "Path of the configuration file")
 	return startServer
 }
