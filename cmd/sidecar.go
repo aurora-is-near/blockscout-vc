@@ -52,7 +52,9 @@ func StartSidecarCmd() *cobra.Command {
 
 			// Initialize and start subscription service
 			sub := subscription.New(client)
-			sub.Subscribe(worker)
+			if err := sub.Subscribe(worker); err != nil {
+				return fmt.Errorf("failed to subscribe: %w", err)
+			}
 			defer sub.Stop()
 
 			// Wait for interrupt signal

@@ -2,3 +2,4 @@ config/local.yaml
 config/docker-compose.yaml
 docker-compose.yaml
 .DS_Store
+blockscout-vc
