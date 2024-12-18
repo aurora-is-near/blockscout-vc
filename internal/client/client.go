@@ -11,7 +11,6 @@ import (
 
 // Client represents a WebSocket client connection to Supabase Realtime
 type Client struct {
-	conn     *websocket.Conn
 	apiKey   string
 	endpoint string
 	handlers map[string]func([]byte)

@@ -3,6 +3,7 @@ package heartbeat
 
 import (
 	"blockscout-vc/internal/client"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,7 +49,9 @@ func (h *HeartbeatService) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				sendHeartbeat(h.client.Conn)
+				if err := sendHeartbeat(h.client.Conn); err != nil {
+					log.Printf("Failed to send heartbeat: %v", err)
+				}
 			case <-h.stopChan:
 				ticker.Stop()
 				return

@@ -28,9 +28,7 @@ func (d *Docker) RecreateContainers(containerNames []string) error {
 	uniqueContainers := d.UniqueContainerNames(containerNames)
 
 	args := []string{"compose", "-f", pathToDockerCompose, "up", "-d", "--force-recreate"}
-	for _, containerName := range uniqueContainers {
-		args = append(args, containerName)
-	}
+	args = append(args, uniqueContainers...)
 
 	cmd := exec.Command("docker", args...)
 	cmd.Stdout = os.Stdout

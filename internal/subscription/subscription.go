@@ -92,7 +92,9 @@ func (s *Subscription) Subscribe(worker *worker.Worker) error {
 			if record.Event == "postgres_changes" {
 				table := viper.GetString("table")
 				if record.Payload.Data.Table == table {
-					record.HandleMessage()
+					if err := record.HandleMessage(); err != nil {
+						log.Printf("Failed to handle message: %v", err)
+					}
 				} else {
 					log.Printf("Unhandled table: %s", record.Payload.Data.Table)
 				}
@@ -127,9 +129,8 @@ func (s *Subscription) Subscribe(worker *worker.Worker) error {
 }
 
 // Stop closes the subscription connection
-func (s *Subscription) Stop() error {
+func (s *Subscription) Stop() {
 	s.client.Close()
-	return nil
 }
 
 // NewPostgresChanges creates a PostgresChanges instance from a raw message
