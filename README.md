@@ -13,8 +13,11 @@ supabaseRealtimeUrl: "wss://your-project.supabase.co/realtime/v1/websocket"
 supabaseAnonKey: "your-anon-key"
 pathToDockerCompose: "./config/docker-compose.yaml"
 frontendServiceName: "frontend"
+frontendContainerName: "frontend"
 backendServiceName: "backend"
+backendContainerName: "backend"
 statsServiceName: "stats"
+statsContainerName: "stats"
 table: "silos"
 chainId: 10
 ```
@@ -126,8 +129,11 @@ blockscout-vc/
 | `supabaseAnonKey` | Supabase Anonymous Key | Yes |
 | `pathToDockerCompose` | Path to the Docker Compose file | Yes |
 | `frontendServiceName` | Name of the frontend service | Yes |
+| `frontendContainerName` | Name of the frontend container | Yes |
 | `backendServiceName` | Name of the backend service | Yes |
+| `backendContainerName` | Name of the backend container | Yes |
 | `statsServiceName` | Name of the stats service | Yes |
+| `statsContainerName` | Name of the stats container | Yes |
 | `table` | Name of the table to listen to | Yes |
 | `chainId` | Chain ID to listen to | Yes |
 

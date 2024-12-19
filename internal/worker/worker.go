@@ -11,7 +11,7 @@ import (
 
 // Job represents a container recreation task with one or more containers
 type Job struct {
-	ContainerNames []string
+	Containers []docker.Container
 }
 
 // Worker manages a queue of container recreation jobs,
@@ -40,23 +40,23 @@ func (w *Worker) Start(ctx context.Context) {
 }
 
 // AddJob adds a new container recreation job to the queue
-// Returns false if the job is already in queue or if containerNames is empty
+// Returns false if the job is already in queue or if containers is empty
 // Returns true if the job was successfully added
-func (w *Worker) AddJob(containerNames []string) bool {
-	if len(containerNames) == 0 {
+func (w *Worker) AddJob(containers []docker.Container) bool {
+	if len(containers) == 0 {
 		return false
 	}
 
 	w.jobSetMux.Lock()
 	defer w.jobSetMux.Unlock()
 
-	key := w.makeKey(containerNames)
+	key := w.makeKey(containers)
 	if _, exists := w.jobSet[key]; exists {
 		return false
 	}
 
 	w.jobSet[key] = struct{}{}
-	w.jobs <- Job{ContainerNames: containerNames}
+	w.jobs <- Job{Containers: containers}
 	return true
 }
 
@@ -68,7 +68,7 @@ func (w *Worker) process(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case job := <-w.jobs:
-			jobKey := w.makeKey(job.ContainerNames)
+			jobKey := w.makeKey(job.Containers)
 			// Using an immediately invoked function to ensure defer runs after each job
 			// Without this, defer would only run when the process function returns
 			func() {
@@ -78,7 +78,7 @@ func (w *Worker) process(ctx context.Context) {
 					w.jobSetMux.Unlock()
 				}()
 
-				err := w.docker.RecreateContainers(job.ContainerNames)
+				err := w.docker.RecreateContainers(job.Containers)
 				if err != nil {
 					log.Printf("failed to recreate containers: %v", err)
 					return
@@ -90,7 +90,7 @@ func (w *Worker) process(ctx context.Context) {
 
 // makeKey creates a unique string key for a set of container names
 // Uses docker.UniqueContainerNames to handle container name normalization
-func (w *Worker) makeKey(containerNames []string) string {
-	unique := w.docker.UniqueContainerNames(containerNames)
-	return strings.Join(unique, ",")
+func (w *Worker) makeKey(containers []docker.Container) string {
+	unique := w.docker.UniqueContainers(containers)
+	return strings.Join(w.docker.GetContainerNames(unique), ",")
 }

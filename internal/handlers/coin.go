@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"blockscout-vc/internal/docker"
 	"fmt"
 
 	"github.com/spf13/viper"
@@ -33,34 +34,46 @@ func (h *CoinHandler) Handle(record *Record) HandlerResult {
 		result.Error = fmt.Errorf("failed to read compose file: %w", err)
 		return result
 	}
-	frontendService := viper.GetString("frontendServiceName")
-	backendService := viper.GetString("backendServiceName")
-	statsService := viper.GetString("statsServiceName")
 
-	// Define environment updates for each service
-	updates := map[string]map[string]interface{}{
-		frontendService: {
-			"NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL": record.Coin,
+	updates := []EnvUpdate{
+		{
+			ServiceName:   viper.GetString("frontendServiceName"),
+			Key:           "NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL",
+			Value:         record.Coin,
+			ContainerName: viper.GetString("frontendContainerName"),
 		},
-		backendService: {
-			"COIN": record.Coin,
+		{
+			ServiceName:   viper.GetString("backendServiceName"),
+			Key:           "COIN",
+			Value:         record.Coin,
+			ContainerName: viper.GetString("backendContainerName"),
 		},
-		statsService: {
-			"STATS_CHARTS__TEMPLATE_VALUES__NATIVE_COIN_SYMBOL": record.Coin,
+		{
+			ServiceName:   viper.GetString("statsServiceName"),
+			Key:           "STATS_CHARTS__TEMPLATE_VALUES__NATIVE_COIN_SYMBOL",
+			Value:         record.Coin,
+			ContainerName: viper.GetString("statsContainerName"),
 		},
 	}
 
+	// Define environment updates for each service
+
 	// Apply updates to each service
-	for service, env := range updates {
+	for _, env := range updates {
 		var updated bool
-		compose, updated, err = h.docker.UpdateServiceEnv(compose, service, env)
+		compose, updated, err = h.docker.UpdateServiceEnv(compose, env.ServiceName, map[string]interface{}{
+			env.Key: env.Value,
+		})
 		if err != nil {
-			result.Error = fmt.Errorf("failed to update %s service environment: %w", service, err)
+			result.Error = fmt.Errorf("failed to update %s service environment: %w", env.ServiceName, err)
 			return result
 		}
 		if updated {
-			fmt.Printf("Updated %s service environment: %+v\n", service, env)
-			result.ContainersToRestart = append(result.ContainersToRestart, service)
+			fmt.Printf("Updated %s service environment: %+v\n", env.ServiceName, env)
+			result.ContainersToRestart = append(result.ContainersToRestart, docker.Container{
+				Name:        env.ContainerName,
+				ServiceName: env.ServiceName,
+			})
 		}
 	}
 
