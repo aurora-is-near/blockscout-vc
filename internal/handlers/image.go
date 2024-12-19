@@ -1,7 +1,12 @@
 package handlers
 
 import (
+	"blockscout-vc/internal/docker"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -11,11 +16,15 @@ const MaxImageLength = 2000
 
 type ImageHandler struct {
 	BaseHandler
+	client *http.Client
 }
 
 func NewImageHandler() *ImageHandler {
 	return &ImageHandler{
 		BaseHandler: NewBaseHandler(),
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 }
 
@@ -35,34 +44,32 @@ func (h *ImageHandler) Handle(record *Record) HandlerResult {
 		return result
 	}
 
-	frontendService := viper.GetString("frontendServiceName")
+	frontendServiceName := viper.GetString("frontendServiceName")
+	frontendContainerName := viper.GetString("frontendContainerName")
 
 	updates := map[string]map[string]interface{}{
-		frontendService: {},
+		frontendServiceName: {},
 	}
 
 	// Validate and update light logo URL
 	if err := h.validateImage(record.LightLogoURL); err != nil {
 		result.Error = fmt.Errorf("invalid light logo URL: %w", err)
-		return result
 	} else {
-		updates[frontendService]["NEXT_PUBLIC_NETWORK_LOGO"] = record.LightLogoURL
+		updates[frontendServiceName]["NEXT_PUBLIC_NETWORK_LOGO"] = record.LightLogoURL
 	}
 
 	// Validate and update dark logo URL
 	if err := h.validateImage(record.DarkLogoURL); err != nil {
 		result.Error = fmt.Errorf("invalid dark logo URL: %w", err)
-		return result
 	} else {
-		updates[frontendService]["NEXT_PUBLIC_NETWORK_LOGO_DARK"] = record.DarkLogoURL
+		updates[frontendServiceName]["NEXT_PUBLIC_NETWORK_LOGO_DARK"] = record.DarkLogoURL
 	}
 
 	// Validate and update favicon URL
 	if err := h.validateImage(record.FaviconURL); err != nil {
 		result.Error = fmt.Errorf("invalid favicon URL: %w", err)
-		return result
 	} else {
-		updates[frontendService]["NEXT_PUBLIC_NETWORK_ICON"] = record.FaviconURL
+		updates[frontendServiceName]["NEXT_PUBLIC_NETWORK_ICON"] = record.FaviconURL
 	}
 
 	// Apply updates to services
@@ -75,7 +82,12 @@ func (h *ImageHandler) Handle(record *Record) HandlerResult {
 		}
 		if updated {
 			fmt.Printf("Updated %s service environment: %+v\n", service, env)
-			result.ContainersToRestart = append(result.ContainersToRestart, service)
+			fmt.Printf("Frontend container name: %s\n", frontendContainerName)
+			fmt.Printf("Frontend service name: %s\n", frontendServiceName)
+			result.ContainersToRestart = append(result.ContainersToRestart, docker.Container{
+				Name:        frontendContainerName,
+				ServiceName: frontendServiceName,
+			})
 		}
 	}
 
@@ -89,15 +101,42 @@ func (h *ImageHandler) Handle(record *Record) HandlerResult {
 }
 
 // validateImage checks if the image URL meets the required criteria
-func (h *ImageHandler) validateImage(image string) error {
-	if image == "" {
+func (h *ImageHandler) validateImage(imageURL string) error {
+	if imageURL == "" {
 		return fmt.Errorf("image cannot be empty")
 	}
-	if len(image) == 0 {
-		return fmt.Errorf("image cannot be empty")
-	}
-	if len(image) > MaxImageLength {
+
+	if len(imageURL) > MaxImageLength {
 		return fmt.Errorf("image length cannot exceed %d characters", MaxImageLength)
 	}
+
+	// Parse and validate URL
+	parsedURL, err := url.Parse(imageURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL format: %w", err)
+	}
+
+	// Check if scheme is http or https
+	if !strings.HasPrefix(parsedURL.Scheme, "http") {
+		return fmt.Errorf("URL must start with http:// or https://")
+	}
+
+	// Check if image is accessible
+	resp, err := h.client.Head(imageURL)
+	if err != nil {
+		return fmt.Errorf("failed to access image: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("image not accessible, status code: %d", resp.StatusCode)
+	}
+
+	// Optionally verify content type
+	contentType := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "image/") {
+		return fmt.Errorf("URL does not point to an image (content-type: %s)", contentType)
+	}
+
 	return nil
 }

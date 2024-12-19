@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"blockscout-vc/internal/client"
+	"blockscout-vc/internal/docker"
 	"blockscout-vc/internal/handlers"
 	"blockscout-vc/internal/worker"
 	"database/sql"
@@ -150,7 +151,7 @@ func (p *PostgresChanges) HandleMessage() error {
 		handlers.NewImageHandler(),
 	}
 
-	containersToRestart := []string{}
+	containersToRestart := []docker.Container{}
 	for _, handler := range handlers {
 		result := handler.Handle(&p.Payload.Data.Record)
 		if result.Error != nil {

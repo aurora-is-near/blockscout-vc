@@ -9,8 +9,8 @@ type Handler interface {
 
 // HandlerResult represents the outcome of a handler's processing
 type HandlerResult struct {
-	Error               error    // Any error that occurred during handling
-	ContainersToRestart []string // List of container names that need to be restarted
+	Error               error              // Any error that occurred during handling
+	ContainersToRestart []docker.Container // List of container names that need to be restarted
 }
 
 // Record represents the common data structure for all handlers
@@ -36,4 +36,11 @@ func NewBaseHandler() BaseHandler {
 	return BaseHandler{
 		docker: docker.NewDocker(),
 	}
+}
+
+type EnvUpdate struct {
+	ServiceName   string
+	Key           string
+	Value         string
+	ContainerName string
 }

@@ -21,25 +21,32 @@ func NewDocker() *Docker {
 	}
 }
 
+type Container struct {
+	Name        string
+	ServiceName string
+}
+
 // RecreateContainers stops, removes and recreates specified containers
 // It uses docker-compose to handle the container lifecycle
-func (d *Docker) RecreateContainers(containerNames []string) error {
+func (d *Docker) RecreateContainers(containers []Container) error {
 	pathToDockerCompose := viper.GetString("pathToDockerCompose")
-	uniqueContainers := d.UniqueContainerNames(containerNames)
+	uniqueContainers := d.UniqueContainers(containers)
 
 	// Define the sequence of commands to execute
+	containerNames := d.GetContainerNames(uniqueContainers)
+	serviceNames := d.GetServiceNames(uniqueContainers)
 	commands := []struct {
 		args       []string
 		desc       string
 		errMessage string
 	}{
 		{
-			args:       []string{"rm", "-f"},
+			args:       append([]string{"rm", "-f"}, containerNames...),
 			desc:       "Stopping and removing containers",
 			errMessage: "Error stopping and removing containers",
 		},
 		{
-			args:       []string{"compose", "-f", pathToDockerCompose, "up", "-d", "--force-recreate"},
+			args:       append([]string{"compose", "-f", pathToDockerCompose, "up", "-d", "--force-recreate"}, serviceNames...),
 			desc:       "Recreating containers",
 			errMessage: "Error recreating containers",
 		},
@@ -47,9 +54,7 @@ func (d *Docker) RecreateContainers(containerNames []string) error {
 
 	// Execute each command in sequence
 	for _, cmd := range commands {
-		args := append(cmd.args, uniqueContainers...)
-
-		execCmd := exec.Command("docker", args...)
+		execCmd := exec.Command("docker", cmd.args...)
 		execCmd.Stdout = os.Stdout
 		execCmd.Stderr = os.Stderr
 
@@ -123,15 +128,32 @@ func (d *Docker) UpdateServiceEnv(compose map[string]interface{}, serviceName st
 }
 
 // UniqueContainerNames returns a sorted list of unique container names
-func (d *Docker) UniqueContainerNames(containerNames []string) []string {
-	unique := make(map[string]bool)
-	for _, name := range containerNames {
-		unique[name] = true
+func (d *Docker) UniqueContainers(containers []Container) []Container {
+	unique := make(map[string]Container)
+	for _, container := range containers {
+		unique[container.Name] = container
 	}
-	keys := make([]string, 0, len(unique))
-	for k := range unique {
-		keys = append(keys, k)
+	uniqueContainers := make([]Container, 0, len(unique))
+	for _, container := range unique {
+		uniqueContainers = append(uniqueContainers, container)
 	}
-	sort.Strings(keys)
-	return keys
+	return uniqueContainers
+}
+
+func (d *Docker) GetContainerNames(containers []Container) []string {
+	names := make([]string, 0, len(containers))
+	for _, container := range containers {
+		names = append(names, container.Name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func (d *Docker) GetServiceNames(containers []Container) []string {
+	names := make([]string, 0, len(containers))
+	for _, container := range containers {
+		names = append(names, container.ServiceName)
+	}
+	sort.Strings(names)
+	return names
 }
