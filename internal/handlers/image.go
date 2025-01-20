@@ -38,6 +38,24 @@ func (h *ImageHandler) Handle(record *Record) HandlerResult {
 		return result
 	}
 
+	// Validate and update light logo URL
+	if err := h.validateImage(record.LightLogoURL); err != nil {
+		result.Error = fmt.Errorf("invalid light logo URL: %w", err)
+		return result
+	}
+
+	// Validate and update dark logo URL
+	if err := h.validateImage(record.DarkLogoURL); err != nil {
+		result.Error = fmt.Errorf("invalid dark logo URL: %w", err)
+		return result
+	}
+
+	// Validate and update favicon URL
+	if err := h.validateImage(record.FaviconURL); err != nil {
+		result.Error = fmt.Errorf("invalid favicon URL: %w", err)
+		return result
+	}
+
 	compose, err := h.docker.ReadComposeFile()
 	if err != nil {
 		result.Error = fmt.Errorf("failed to read compose file: %w", err)
@@ -47,43 +65,39 @@ func (h *ImageHandler) Handle(record *Record) HandlerResult {
 	frontendServiceName := viper.GetString("frontendServiceName")
 	frontendContainerName := viper.GetString("frontendContainerName")
 
-	updates := map[string]map[string]interface{}{
-		frontendServiceName: {},
-	}
-
-	// Validate and update light logo URL
-	if err := h.validateImage(record.LightLogoURL); err != nil {
-		result.Error = fmt.Errorf("invalid light logo URL: %w", err)
-	} else {
-		updates[frontendServiceName]["NEXT_PUBLIC_NETWORK_LOGO"] = record.LightLogoURL
-	}
-
-	// Validate and update dark logo URL
-	if err := h.validateImage(record.DarkLogoURL); err != nil {
-		result.Error = fmt.Errorf("invalid dark logo URL: %w", err)
-	} else {
-		updates[frontendServiceName]["NEXT_PUBLIC_NETWORK_LOGO_DARK"] = record.DarkLogoURL
-	}
-
-	// Validate and update favicon URL
-	if err := h.validateImage(record.FaviconURL); err != nil {
-		result.Error = fmt.Errorf("invalid favicon URL: %w", err)
-	} else {
-		updates[frontendServiceName]["NEXT_PUBLIC_NETWORK_ICON"] = record.FaviconURL
+	updates := []docker.EnvUpdate{
+		{
+			ServiceName:   frontendServiceName,
+			Key:           "NEXT_PUBLIC_NETWORK_LOGO",
+			Value:         record.LightLogoURL,
+			ContainerName: frontendContainerName,
+		},
+		{
+			ServiceName:   frontendServiceName,
+			Key:           "NEXT_PUBLIC_NETWORK_LOGO_DARK",
+			Value:         record.DarkLogoURL,
+			ContainerName: frontendContainerName,
+		},
+		{
+			ServiceName:   frontendServiceName,
+			Key:           "NEXT_PUBLIC_NETWORK_ICON",
+			Value:         record.FaviconURL,
+			ContainerName: frontendContainerName,
+		},
 	}
 
 	// Apply updates to services
-	for service, env := range updates {
+	for _, env := range updates {
 		var updated bool
-		compose, updated, err = h.docker.UpdateServiceEnv(compose, service, env)
+		compose, updated, err = h.docker.UpdateServiceEnv(compose, env.ServiceName, map[string]interface{}{
+			env.Key: env.Value,
+		})
 		if err != nil {
-			result.Error = fmt.Errorf("failed to update %s service environment: %w", service, err)
+			result.Error = fmt.Errorf("failed to update %s service environment: %w", env.ServiceName, err)
 			return result
 		}
 		if updated {
-			fmt.Printf("Updated %s service environment: %+v\n", service, env)
-			fmt.Printf("Frontend container name: %s\n", frontendContainerName)
-			fmt.Printf("Frontend service name: %s\n", frontendServiceName)
+			fmt.Printf("Updated %s service environment: %+v\n", env.ServiceName, env)
 			result.ContainersToRestart = append(result.ContainersToRestart, docker.Container{
 				Name:        frontendContainerName,
 				ServiceName: frontendServiceName,
