@@ -127,6 +127,36 @@ func (d *Docker) UpdateServiceEnv(compose map[string]interface{}, serviceName st
 	return compose, updated, nil
 }
 
+func (d *Docker) AppyAndUpdateEachService(compose map[string]interface{}, updates []EnvUpdate) ([]Container, error) {
+	var containers []Container
+	var err error = nil
+	
+	// Apply updates to each service
+	for _, env := range updates {
+		var updated bool
+		compose, updated, err = d.UpdateServiceEnv(compose, env.ServiceName, map[string]interface{}{
+			env.Key: env.Value,
+		})
+		if err != nil {
+			err = fmt.Errorf("failed to update %s service environment: %w", env.ServiceName, err)
+			return nil, err
+		}
+		if updated {
+			fmt.Printf("Updated %s service environment: %+v\n", env.ServiceName, env)
+			containers = append(containers, Container{
+				Name:        env.ContainerName,
+				ServiceName: env.ServiceName,
+			})
+		}
+	}
+
+	if err = d.WriteComposeFile(compose); err != nil {
+		err = fmt.Errorf("failed to write compose file: %w", err)
+		return nil, err
+	}
+	return containers, nil
+}
+
 // UniqueContainerNames returns a sorted list of unique container names
 func (d *Docker) UniqueContainers(containers []Container) []Container {
 	unique := make(map[string]Container)

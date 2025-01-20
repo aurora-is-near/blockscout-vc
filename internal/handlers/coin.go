@@ -57,28 +57,9 @@ func (h *CoinHandler) Handle(record *Record) HandlerResult {
 		},
 	}
 
-	// Apply updates to each service
-	for _, env := range updates {
-		var updated bool
-		compose, updated, err = h.docker.UpdateServiceEnv(compose, env.ServiceName, map[string]interface{}{
-			env.Key: env.Value,
-		})
-		if err != nil {
-			result.Error = fmt.Errorf("failed to update %s service environment: %w", env.ServiceName, err)
-			return result
-		}
-		if updated {
-			fmt.Printf("Updated %s service environment: %+v\n", env.ServiceName, env)
-			result.ContainersToRestart = append(result.ContainersToRestart, docker.Container{
-				Name:        env.ContainerName,
-				ServiceName: env.ServiceName,
-			})
-		}
-	}
-
-	if err = h.docker.WriteComposeFile(compose); err != nil {
-		result.Error = fmt.Errorf("failed to write compose file: %w", err)
-		return result
+	result.ContainersToRestart, err = h.docker.AppyAndUpdateEachService(compose, updates)
+	if err != nil {
+		result.Error = err
 	}
 
 	return result
