@@ -10,3 +10,5 @@ statsServiceName: "stats"
 statsContainerName: "stats"
 table: "silos"
 chainId: "replace-with-actual-chain-id"
+# When the following is set, docker-compose will be left as is and instead the common environment file will be updated
+pathToCommonEnvironmentFile: ""

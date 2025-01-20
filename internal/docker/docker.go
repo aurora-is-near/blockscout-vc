@@ -128,6 +128,52 @@ func (d *Docker) UpdateServiceEnv(compose map[string]interface{}, serviceName st
 }
 
 func (d *Docker) AppyAndUpdateEachService(compose map[string]interface{}, updates []EnvUpdate) ([]Container, error) {
+	pathToCommonEnvironmentFile := viper.GetString("pathToCommonEnvironmentFile")
+
+	if pathToCommonEnvironmentFile == "" {
+		return d.applyAndUpdateEachServiceUsingCompose(compose, updates)
+	}
+
+	envViper := viper.New()
+	envViper.SetConfigFile(pathToCommonEnvironmentFile)
+	if err := envViper.ReadInConfig(); err != nil {
+		err = fmt.Errorf("error loading %s env file: %w", pathToCommonEnvironmentFile, err)
+		return nil, err
+	}
+	return d.applyAndUpdateEachServiceUsingEnvFile(envViper, updates)
+}
+
+func (d *Docker) applyAndUpdateEachServiceUsingEnvFile(variables *viper.Viper, updates []EnvUpdate) ([]Container, error) {
+	var containers []Container
+	for _, env := range updates {
+		if (variables.GetString(env.Key) != env.Value) {
+			variables.Set(env.Key, env.Value)
+
+			fmt.Printf("Updated %s service environment: %+v\n", env.ServiceName, env)
+			containers = append(containers, Container{
+				Name:        env.ContainerName,
+				ServiceName: env.ServiceName,
+			})
+		}
+	}
+
+	file, err := os.Create(variables.ConfigFileUsed())
+	if err != nil {
+		return nil, fmt.Errorf("error opening .env file: %v", err)
+	}
+	defer file.Close()
+
+	for _, key := range viper.AllKeys() {
+		_, err := fmt.Fprintf(file, "%s=%s\n", key, viper.GetString(key))
+		if err != nil {
+			return nil, fmt.Errorf("error writing to .env file: %v", err)
+		}
+	}
+
+	return containers, nil
+}
+
+func (d *Docker) applyAndUpdateEachServiceUsingCompose(compose map[string]interface{}, updates []EnvUpdate) ([]Container, error) {
 	var containers []Container
 	var err error = nil
 	
