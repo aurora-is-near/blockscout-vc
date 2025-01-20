@@ -175,7 +175,7 @@ func (d *Docker) applyAndUpdateEachServiceUsingEnvFile(variables *viper.Viper, u
 
 func (d *Docker) applyAndUpdateEachServiceUsingCompose(compose map[string]interface{}, updates []EnvUpdate) ([]Container, error) {
 	var containers []Container
-	var err error = nil
+	var err error
 	
 	// Apply updates to each service
 	for _, env := range updates {
