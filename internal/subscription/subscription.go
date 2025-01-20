@@ -89,7 +89,9 @@ func (s *Subscription) Subscribe(worker *worker.Worker) error {
 				continue
 			}
 
-			fmt.Printf("Received event: %s\n", record.Event)
+			if (record.Event != "phx_reply") {  // Filter out this one to avoid spamming logs
+				fmt.Printf("Received event: %s\n", record.Event)
+			}
 			if record.Event == "postgres_changes" {
 				table := viper.GetString("table")
 				if record.Payload.Data.Table == table {
