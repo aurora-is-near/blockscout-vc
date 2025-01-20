@@ -37,10 +37,3 @@ func NewBaseHandler() BaseHandler {
 		docker: docker.NewDocker(),
 	}
 }
-
-type EnvUpdate struct {
-	ServiceName   string
-	Key           string
-	Value         string
-	ContainerName string
-}

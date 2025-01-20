@@ -35,7 +35,8 @@ func (h *CoinHandler) Handle(record *Record) HandlerResult {
 		return result
 	}
 
-	updates := []EnvUpdate{
+	// Define environment updates for each service
+	updates := []docker.EnvUpdate{
 		{
 			ServiceName:   viper.GetString("frontendServiceName"),
 			Key:           "NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL",
@@ -55,8 +56,6 @@ func (h *CoinHandler) Handle(record *Record) HandlerResult {
 			ContainerName: viper.GetString("statsContainerName"),
 		},
 	}
-
-	// Define environment updates for each service
 
 	// Apply updates to each service
 	for _, env := range updates {
