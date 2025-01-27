@@ -18,11 +18,11 @@ type HandlerResult struct {
 type Record struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
-	Coin         string `json:"coin"`
+	Coin         string `json:"base_token_symbol"`
 	ChainID      int    `json:"chain_id"`
-	LightLogoURL string `json:"light_logo_url"`
-	DarkLogoURL  string `json:"dark_logo_url"`
-	FaviconURL   string `json:"favicon_url"`
+	LightLogoURL string `json:"network_logo"`
+	DarkLogoURL  string `json:"network_logo_dark"`
+	FaviconURL   string `json:"favicon"`
 	CreatedAt    string `json:"created_at"`
 	UpdatedAt    string `json:"updated_at"`
 }

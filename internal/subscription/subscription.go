@@ -185,7 +185,7 @@ func (s *Subscription) InitialCheck(worker *worker.Worker) error {
 	defer db.Close()
 
 	// Query the current state - limit 1 since there should be only one record
-	query := fmt.Sprintf("SELECT id, name, coin, chain_id, light_logo_url, dark_logo_url, favicon_url, created_at, updated_at FROM %s WHERE chain_id = $1 LIMIT 1", table)
+	query := fmt.Sprintf("SELECT id, name, base_token_symbol, chain_id, network_logo, network_logo_dark, favicon, created_at, updated_at FROM %s WHERE chain_id = $1 LIMIT 1", table)
 	rows, err := db.Query(query, chainId)
 	if err != nil {
 		return fmt.Errorf("failed to query database: %w", err)
