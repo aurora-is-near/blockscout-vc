@@ -149,6 +149,7 @@ func (p *PostgresChanges) HandleMessage() error {
 	handlers := []handlers.Handler{
 		handlers.NewCoinHandler(),
 		handlers.NewImageHandler(),
+		handlers.NewNameHandler(),
 	}
 
 	containersToRestart := []docker.Container{}
