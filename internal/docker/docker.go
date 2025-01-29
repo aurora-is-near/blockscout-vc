@@ -30,6 +30,7 @@ type Container struct {
 // It uses docker-compose to handle the container lifecycle
 func (d *Docker) RecreateContainers(containers []Container) error {
 	pathToDockerCompose := viper.GetString("pathToDockerCompose")
+	projectName := viper.GetString("projectName")
 	uniqueContainers := d.UniqueContainers(containers)
 
 	// Define the sequence of commands to execute
@@ -46,7 +47,11 @@ func (d *Docker) RecreateContainers(containers []Container) error {
 			errMessage: "Error stopping and removing containers",
 		},
 		{
-			args:       append([]string{"compose", "-f", pathToDockerCompose, "up", "-d", "--force-recreate", "--no-deps"}, serviceNames...),
+			args: append([]string{"compose",
+				"-f", pathToDockerCompose,
+				"--project-name", projectName,
+				"up", "-d", "--force-recreate", "--remove-orphans", "--no-deps"},
+				serviceNames...),
 			desc:       "Recreating containers",
 			errMessage: "Error recreating containers",
 		},
