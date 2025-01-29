@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"blockscout-vc/internal/docker"
 )
@@ -70,7 +71,6 @@ func (w *Worker) process(ctx context.Context) {
 		case job := <-w.jobs:
 			jobKey := w.makeKey(job.Containers)
 			// Using an immediately invoked function to ensure defer runs after each job
-			// Without this, defer would only run when the process function returns
 			func() {
 				defer func() {
 					w.jobSetMux.Lock()
@@ -82,6 +82,15 @@ func (w *Worker) process(ctx context.Context) {
 				if err != nil {
 					log.Printf("failed to recreate containers: %v", err)
 					return
+				}
+
+				// Add mandatory delay after successful recreation
+				log.Printf("Container recreation completed, waiting 10 seconds before next job...")
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(10 * time.Second):
+					// Continue to next job after delay
 				}
 			}()
 		}
