@@ -46,7 +46,7 @@ func (d *Docker) RecreateContainers(containers []Container) error {
 			errMessage: "Error stopping and removing containers",
 		},
 		{
-			args:       append([]string{"compose", "-f", pathToDockerCompose, "up", "-d", "--force-recreate", "--remove-orphans", "--no-deps"}, serviceNames...),
+			args:       append([]string{"compose", "-f", pathToDockerCompose, "up", "-d", "--force-recreate", "--no-deps"}, serviceNames...),
 			desc:       "Recreating containers",
 			errMessage: "Error recreating containers",
 		},
