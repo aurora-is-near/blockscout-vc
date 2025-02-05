@@ -10,6 +10,10 @@ import (
 	"blockscout-vc/internal/docker"
 )
 
+const (
+	delay = 1 * time.Second
+)
+
 // Job represents a container recreation task with one or more containers
 type Job struct {
 	Containers []docker.Container
@@ -85,11 +89,11 @@ func (w *Worker) process(ctx context.Context) {
 				}
 
 				// Add mandatory delay after successful recreation
-				log.Printf("Container recreation completed, waiting 10 seconds before next job...")
+				log.Printf("Container recreation completed, waiting %s before next job...", delay)
 				select {
 				case <-ctx.Done():
 					return
-				case <-time.After(10 * time.Second):
+				case <-time.After(delay):
 					// Continue to next job after delay
 				}
 			}()
