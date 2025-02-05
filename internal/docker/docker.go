@@ -34,6 +34,11 @@ func (d *Docker) RecreateContainers(containers []Container) error {
 	projectName := viper.GetString("projectName")
 	uniqueContainers := d.UniqueContainers(containers)
 
+	dockerPath, err := exec.LookPath("docker")
+	if err != nil {
+		return fmt.Errorf("docker executable not found: %w", err)
+	}
+
 	// Define the sequence of commands to execute
 	containerNames := d.GetContainerNames(uniqueContainers)
 	serviceNames := d.GetServiceNames(uniqueContainers)
@@ -60,7 +65,7 @@ func (d *Docker) RecreateContainers(containers []Container) error {
 
 	// Execute each command in sequence
 	for _, cmd := range commands {
-		execCmd := exec.Command("docker", cmd.args...)
+		execCmd := exec.Command(dockerPath, cmd.args...)
 		execCmd.Stdout = os.Stdout
 		execCmd.Stderr = os.Stderr
 
