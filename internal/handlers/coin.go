@@ -29,12 +29,6 @@ func (h *CoinHandler) Handle(record *Record) HandlerResult {
 		return result
 	}
 
-	compose, err := h.docker.ReadComposeFile()
-	if err != nil {
-		result.Error = fmt.Errorf("failed to read compose file: %w", err)
-		return result
-	}
-
 	updates := []EnvUpdate{
 		{
 			ServiceName:   viper.GetString("frontendServiceName"),
@@ -56,12 +50,9 @@ func (h *CoinHandler) Handle(record *Record) HandlerResult {
 		},
 	}
 
-	// Define environment updates for each service
-
 	// Apply updates to each service
 	for _, env := range updates {
-		var updated bool
-		compose, updated, err = h.docker.UpdateServiceEnv(compose, env.ServiceName, map[string]interface{}{
+		updated, err := h.UpdateServiceEnv(env.ServiceName, map[string]string{
 			env.Key: env.Value,
 		})
 		if err != nil {
@@ -75,11 +66,6 @@ func (h *CoinHandler) Handle(record *Record) HandlerResult {
 				ServiceName: env.ServiceName,
 			})
 		}
-	}
-
-	if err = h.docker.WriteComposeFile(compose); err != nil {
-		result.Error = fmt.Errorf("failed to write compose file: %w", err)
-		return result
 	}
 
 	return result

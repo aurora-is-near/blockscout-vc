@@ -29,25 +29,20 @@ func (h *NameHandler) Handle(record *Record) HandlerResult {
 		return result
 	}
 
-	compose, err := h.docker.ReadComposeFile()
-	if err != nil {
-		result.Error = fmt.Errorf("failed to read compose file: %w", err)
-		return result
-	}
-
 	frontendServiceName := viper.GetString("frontendServiceName")
 	frontendContainerName := viper.GetString("frontendContainerName")
 
-	updates := map[string]map[string]interface{}{
-		frontendServiceName: {},
+	// Create updates with string values
+	updates := map[string]map[string]string{
+		frontendServiceName: {
+			"NEXT_PUBLIC_NETWORK_NAME":       record.Name,
+			"NEXT_PUBLIC_NETWORK_SHORT_NAME": record.Name,
+		},
 	}
-	updates[frontendServiceName]["NEXT_PUBLIC_NETWORK_NAME"] = record.Name
-	updates[frontendServiceName]["NEXT_PUBLIC_NETWORK_SHORT_NAME"] = record.Name
 
 	// Apply updates to services
 	for service, env := range updates {
-		var updated bool
-		compose, updated, err = h.docker.UpdateServiceEnv(compose, service, env)
+		updated, err := h.UpdateServiceEnv(service, env)
 		if err != nil {
 			result.Error = fmt.Errorf("failed to update %s service environment: %w", service, err)
 			return result
@@ -61,12 +56,6 @@ func (h *NameHandler) Handle(record *Record) HandlerResult {
 				ServiceName: frontendServiceName,
 			})
 		}
-	}
-
-	err = h.docker.WriteComposeFile(compose)
-	if err != nil {
-		result.Error = fmt.Errorf("failed to write compose file: %w", err)
-		return result
 	}
 
 	return result

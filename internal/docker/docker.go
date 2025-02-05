@@ -13,6 +13,7 @@ import (
 type Docker struct {
 	ContainerName       string
 	PathToDockerCompose string
+	ComposeFile         map[string]interface{}
 }
 
 func NewDocker() *Docker {
@@ -75,23 +76,22 @@ func (d *Docker) RecreateContainers(containers []Container) error {
 }
 
 // ReadComposeFile reads and parses the Docker compose file
-func (d *Docker) ReadComposeFile() (map[string]interface{}, error) {
+func (d *Docker) ReadComposeFile() error {
 	data, err := os.ReadFile(d.PathToDockerCompose)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read compose file: %w", err)
+		return fmt.Errorf("failed to read compose file: %w", err)
 	}
 
-	var config map[string]interface{}
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse compose file: %w", err)
+	if err := yaml.Unmarshal(data, &d.ComposeFile); err != nil {
+		return fmt.Errorf("failed to parse compose file: %w", err)
 	}
 
-	return config, nil
+	return nil
 }
 
 // WriteComposeFile writes the updated compose configuration back to the file
-func (d *Docker) WriteComposeFile(compose map[string]interface{}) error {
-	data, err := yaml.Marshal(compose)
+func (d *Docker) WriteComposeFile() error {
+	data, err := yaml.Marshal(d.ComposeFile)
 	if err != nil {
 		return fmt.Errorf("failed to marshal compose file: %w", err)
 	}
@@ -105,21 +105,21 @@ func (d *Docker) WriteComposeFile(compose map[string]interface{}) error {
 
 // UpdateServiceEnv updates environment variables for a specific service in the compose file
 // Returns the updated compose configuration and whether any changes were made
-func (d *Docker) UpdateServiceEnv(compose map[string]interface{}, serviceName string, env map[string]interface{}) (map[string]interface{}, bool, error) {
+func (d *Docker) UpdateServiceEnv(serviceName string, env map[string]string) (bool, error) {
 	updated := false
-	services, ok := compose["services"].(map[string]interface{})
+	services, ok := d.ComposeFile["services"].(map[string]interface{})
 	if !ok {
-		return nil, updated, fmt.Errorf("services section not found")
+		return false, fmt.Errorf("services section not found")
 	}
 
 	service, ok := services[serviceName].(map[string]interface{})
 	if !ok {
-		return nil, updated, fmt.Errorf("service %s not found", serviceName)
+		return false, fmt.Errorf("service %s not found", serviceName)
 	}
 
 	serviceEnv, ok := service["environment"].(map[string]interface{})
 	if !ok {
-		return nil, updated, fmt.Errorf("environment section not found in service")
+		return false, fmt.Errorf("environment section not found in service")
 	}
 
 	for key, value := range env {
@@ -129,7 +129,7 @@ func (d *Docker) UpdateServiceEnv(compose map[string]interface{}, serviceName st
 		}
 	}
 
-	return compose, updated, nil
+	return updated, nil
 }
 
 // UniqueContainerNames returns a sorted list of unique container names
