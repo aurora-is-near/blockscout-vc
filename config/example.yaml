@@ -12,3 +12,4 @@ table: "silos"
 chainId: "replace-with-actual-chain-id"
 pathToEnvFile: "./config/sidecar.env"
 projectName: "blockscout"
+recreationDelay: 1s  # Supports time.Duration format (e.g., "1s", "500ms", "2m")
