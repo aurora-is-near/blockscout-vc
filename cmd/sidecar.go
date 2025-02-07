@@ -40,8 +40,11 @@ func StartSidecarCmd() *cobra.Command {
 			sidecarInjectedEnv := viper.GetString("pathToEnvFile")
 			if sidecarInjectedEnv != "" {
 				if _, err := os.Stat(sidecarInjectedEnv); os.IsNotExist(err) {
-					if _, err := os.Create(sidecarInjectedEnv); err != nil {
+					file, err := os.Create(sidecarInjectedEnv)
+					if err != nil {
 						fmt.Fprintf(os.Stderr, "Error creating env file: %v\n", err)
+					} else {
+						file.Close()
 					}
 				}
 			}
