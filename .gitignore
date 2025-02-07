@@ -3,3 +3,4 @@ config/docker-compose.yaml
 docker-compose.yaml
 .DS_Store
 blockscout-vc
+config/sidecar-injected.env

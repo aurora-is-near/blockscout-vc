@@ -36,6 +36,16 @@ func StartSidecarCmd() *cobra.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			// Create the sidecar-injected.env file if it doesn't exist
+			sidecarInjectedEnv := viper.GetString("pathToEnvFile")
+			if sidecarInjectedEnv != "" {
+				if _, err := os.Stat(sidecarInjectedEnv); os.IsNotExist(err) {
+					if _, err := os.Create(sidecarInjectedEnv); err != nil {
+						fmt.Fprintf(os.Stderr, "Error creating env file: %v\n", err)
+					}
+				}
+			}
+
 			// Initialize WebSocket client
 			supabaseRealtimeUrl := viper.GetString("supabaseRealtimeUrl")
 			supabaseAnonKey := viper.GetString("supabaseAnonKey")
