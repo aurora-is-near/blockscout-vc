@@ -23,7 +23,7 @@ type Record struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
 	Coin         string `json:"base_token_symbol"`
-	ChainID      string `json:"chain_id"`
+	ChainID      int    `json:"chain_id"`
 	LightLogoURL string `json:"network_logo"`
 	DarkLogoURL  string `json:"network_logo_dark"`
 	FaviconURL   string `json:"favicon"`
