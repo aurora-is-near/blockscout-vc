@@ -152,11 +152,14 @@ func (p *PostgresChanges) HandleMessage() error {
 		handlers.NewNameHandler(),
 	}
 
+	var errors []error
 	containersToRestart := []docker.Container{}
+
 	for _, handler := range handlers {
 		result := handler.Handle(&p.Payload.Data.Record)
 		if result.Error != nil {
-			return fmt.Errorf("handler error: %w", result.Error)
+			errors = append(errors, fmt.Errorf("handler %T error: %w", handler, result.Error))
+			continue
 		}
 		containersToRestart = append(containersToRestart, result.ContainersToRestart...)
 	}
@@ -168,6 +171,9 @@ func (p *PostgresChanges) HandleMessage() error {
 		}
 	}
 
+	if len(errors) > 0 {
+		return fmt.Errorf("multiple handler errors: %v", errors)
+	}
 	return nil
 }
 
