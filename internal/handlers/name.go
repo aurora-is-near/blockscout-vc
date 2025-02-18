@@ -8,7 +8,7 @@ import (
 )
 
 // MaxCoinLength defines the maximum allowed length for a coin symbol
-const MaxNameLength = 30
+const MaxNameLength = 40
 
 type NameHandler struct {
 	BaseHandler
@@ -69,8 +69,8 @@ func (h *NameHandler) validateName(name string) error {
 	if len(name) == 0 {
 		return fmt.Errorf("name cannot be empty")
 	}
-	if len(name) > MaxCoinLength {
-		return fmt.Errorf("name length cannot exceed %d characters", MaxCoinLength)
+	if len(name) > MaxNameLength {
+		return fmt.Errorf("name length cannot exceed %d characters", MaxNameLength)
 	}
 	return nil
 }
