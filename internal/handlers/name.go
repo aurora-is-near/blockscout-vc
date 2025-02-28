@@ -37,6 +37,7 @@ func (h *NameHandler) Handle(record *Record) HandlerResult {
 		frontendServiceName: {
 			"NEXT_PUBLIC_NETWORK_NAME":       record.Name,
 			"NEXT_PUBLIC_NETWORK_SHORT_NAME": record.Name,
+			"NEXT_PUBLIC_FEATURED_NETWORKS":  `[{'title':'Aurora','url':'https://explorer.aurora.dev/','group':'Mainnets'}, {'title':'` + record.Name + `','url':'` + record.ExplorerURL + `','group':'Mainnets', 'isActive':true}]`,
 		},
 	}
 

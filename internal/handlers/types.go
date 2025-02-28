@@ -27,6 +27,7 @@ type Record struct {
 	LightLogoURL string `json:"network_logo"`
 	DarkLogoURL  string `json:"network_logo_dark"`
 	FaviconURL   string `json:"favicon"`
+	ExplorerURL  string `json:"explorer_url"`
 	CreatedAt    string `json:"created_at"`
 	UpdatedAt    string `json:"updated_at"`
 }
@@ -52,39 +53,20 @@ type EnvUpdate struct {
 }
 
 func (h *BaseHandler) UpdateServiceEnv(serviceName string, envVars map[string]string) (bool, error) {
-	if h.env.PathToEnvFile == "" {
-		err := h.docker.ReadComposeFile()
-		if err != nil {
-			return false, fmt.Errorf("failed to read compose file: %w", err)
-		}
-		updated, err := h.docker.UpdateServiceEnv(serviceName, envVars)
-		if err != nil {
-			return false, fmt.Errorf("failed to update service env: %w", err)
-		}
-		if updated {
-			h.docker.WriteComposeFile()
-		}
-		return updated, nil
-	} else {
-		err := h.env.ReadEnvFile()
-		if err != nil {
-			return false, fmt.Errorf("failed to read env file: %w", err)
-		}
-		updated, err := h.env.UpdateEnvVars(envVars)
-		if err != nil {
-			return false, fmt.Errorf("failed to update env vars: %w", err)
-		}
-		if updated {
-			h.env.WriteEnvFile()
-		}
-		return updated, nil
+	err := h.env.ReadEnvFile()
+	if err != nil {
+		return false, fmt.Errorf("failed to read env file: %w", err)
 	}
+	updated, err := h.env.UpdateEnvVars(envVars)
+	if err != nil {
+		return false, fmt.Errorf("failed to update env vars: %w", err)
+	}
+	if updated {
+		h.env.WriteEnvFile()
+	}
+	return updated, nil
 }
 
 func (h *BaseHandler) SaveFile() error {
-	if h.env.PathToEnvFile == "" {
-		return h.docker.WriteComposeFile()
-	} else {
-		return h.env.WriteEnvFile()
-	}
+	return h.env.WriteEnvFile()
 }

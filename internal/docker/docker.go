@@ -7,7 +7,6 @@ import (
 	"sort"
 
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
 )
 
 type Docker struct {
@@ -77,34 +76,6 @@ func (d *Docker) RecreateContainers(containers []Container) error {
 	}
 
 	fmt.Println("Docker containers recreated successfully!")
-	return nil
-}
-
-// ReadComposeFile reads and parses the Docker compose file
-func (d *Docker) ReadComposeFile() error {
-	data, err := os.ReadFile(d.PathToDockerCompose)
-	if err != nil {
-		return fmt.Errorf("failed to read compose file: %w", err)
-	}
-
-	if err := yaml.Unmarshal(data, &d.ComposeFile); err != nil {
-		return fmt.Errorf("failed to parse compose file: %w", err)
-	}
-
-	return nil
-}
-
-// WriteComposeFile writes the updated compose configuration back to the file
-func (d *Docker) WriteComposeFile() error {
-	data, err := yaml.Marshal(d.ComposeFile)
-	if err != nil {
-		return fmt.Errorf("failed to marshal compose file: %w", err)
-	}
-
-	if err := os.WriteFile(d.PathToDockerCompose, data, 0644); err != nil {
-		return fmt.Errorf("failed to write compose file: %w", err)
-	}
-
 	return nil
 }
 
