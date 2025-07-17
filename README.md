@@ -18,6 +18,8 @@ backendServiceName: "backend"
 backendContainerName: "backend"
 statsServiceName: "stats"
 statsContainerName: "stats"
+proxyServiceName: "proxy"
+proxyContainerName: "proxy"
 table: "silos"
 chainId: 10
 ```
@@ -75,6 +77,8 @@ docker logs -f blockscout-vc-sidecar
 - Handles multiple service updates efficiently
 - Prevents duplicate container restarts
 - Validates configuration changes before applying
+- Tracks explorer URL changes and updates related environment variables
+- Uses template-based environment variable management
 
 ## Development
 
@@ -112,7 +116,8 @@ blockscout-vc/
 │   ├── client/        # WebSocket client implementation
 │   ├── config/        # Configuration handling
 │   ├── docker/        # Docker operations
-│   ├── handlers/      # Event handlers
+│   ├── env/           # Environment variable management
+│   ├── handlers/      # Event handlers (name, coin, image, explorer)
 │   ├── heartbeat/     # Heartbeat logic
 │   └── subscription/  # Supabase subscription logic
 │   └── worker/        # Worker implementation
@@ -134,8 +139,37 @@ blockscout-vc/
 | `backendContainerName` | Name of the backend container | Yes |
 | `statsServiceName` | Name of the stats service | Yes |
 | `statsContainerName` | Name of the stats container | Yes |
+| `proxyServiceName` | Name of the proxy service | Yes |
+| `proxyContainerName` | Name of the proxy container | Yes |
 | `table` | Name of the table to listen to | Yes |
 | `chainId` | Chain ID to listen to | Yes |
+| `pathToEnvFile` | Path to the environment file | Yes |
+
+## Event Handlers
+
+The sidecar service includes several handlers that respond to database changes:
+
+- **Name Handler**: Updates network name and featured networks configuration
+- **Coin Handler**: Updates cryptocurrency symbol and related settings
+- **Image Handler**: Updates logo and favicon URLs
+- **Explorer Handler**: Updates explorer URL and related environment variables
+
+### Explorer Handler
+
+The Explorer Handler monitors changes to the `explorer_url` field in the database and automatically updates related environment variables:
+
+- `BLOCKSCOUT_HOST`: The main explorer host
+- `MICROSERVICE_VISUALIZE_SOL2UML_URL`: Visualization service URL
+- `NEXT_PUBLIC_FEATURED_NETWORKS`: Featured networks configuration for the frontend
+- `NEXT_PUBLIC_API_HOST`: Frontend API host
+- `NEXT_PUBLIC_APP_HOST`: Frontend app host
+- `NEXT_PUBLIC_STATS_API_HOST`: Stats API host
+- `NEXT_PUBLIC_VISUALIZE_API_HOST`: Visualization API host
+- `STATS__BLOCKSCOUT_API_URL`: Stats service API URL
+- `EXPLORER_URL`: Explorer host for nginx configuration
+- `BLOCKSCOUT_HTTP_PROTOCOL`: Protocol (http/https) for nginx configuration
+
+When the explorer URL changes, all affected services (backend, frontend, stats, proxy) are automatically restarted.
 
 ## Debugging
 

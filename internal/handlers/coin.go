@@ -51,16 +51,20 @@ func (h *CoinHandler) Handle(record *Record) HandlerResult {
 	}
 
 	// Apply updates to each service
+	allUpdates := make(map[string]string)
 	for _, env := range updates {
-		updated, err := h.UpdateServiceEnv(env.ServiceName, map[string]string{
-			env.Key: env.Value,
-		})
-		if err != nil {
-			result.Error = fmt.Errorf("failed to update %s service environment: %w", env.ServiceName, err)
-			return result
-		}
-		if updated {
-			fmt.Printf("Updated %s service environment: %+v\n", env.ServiceName, env)
+		allUpdates[env.Key] = env.Value
+	}
+
+	updated, err := h.UpdateEnvFile(allUpdates)
+	if err != nil {
+		result.Error = fmt.Errorf("failed to update environment: %w", err)
+		return result
+	}
+	if updated {
+		fmt.Printf("Updated environment with coin changes: %+v\n", allUpdates)
+		// Add all containers to restart list
+		for _, env := range updates {
 			result.ContainersToRestart = append(result.ContainersToRestart, docker.Container{
 				Name:        env.ContainerName,
 				ServiceName: env.ServiceName,

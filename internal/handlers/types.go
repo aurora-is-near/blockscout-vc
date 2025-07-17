@@ -52,7 +52,9 @@ type EnvUpdate struct {
 	ContainerName string
 }
 
-func (h *BaseHandler) UpdateServiceEnv(serviceName string, envVars map[string]string) (bool, error) {
+// UpdateEnvFile updates the environment file with the provided variables
+// Note: This always updates the file specified in pathToEnvFile configuration
+func (h *BaseHandler) UpdateEnvFile(envVars map[string]string) (bool, error) {
 	err := h.env.ReadEnvFile()
 	if err != nil {
 		return false, fmt.Errorf("failed to read env file: %w", err)
