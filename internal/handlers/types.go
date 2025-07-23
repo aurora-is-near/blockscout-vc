@@ -64,7 +64,9 @@ func (h *BaseHandler) UpdateEnvFile(envVars map[string]string) (bool, error) {
 		return false, fmt.Errorf("failed to update env vars: %w", err)
 	}
 	if updated {
-		h.env.WriteEnvFile()
+		if err := h.env.WriteEnvFile(); err != nil {
+			return false, fmt.Errorf("failed to write env file: %w", err)
+		}
 	}
 	return updated, nil
 }
