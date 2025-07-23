@@ -150,6 +150,7 @@ func (p *PostgresChanges) HandleMessage() error {
 		handlers.NewCoinHandler(),
 		handlers.NewImageHandler(),
 		handlers.NewNameHandler(),
+		handlers.NewExplorerHandler(),
 	}
 
 	var errors []error

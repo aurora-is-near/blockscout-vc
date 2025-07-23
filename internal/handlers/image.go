@@ -68,21 +68,26 @@ func (h *ImageHandler) Handle(record *Record) HandlerResult {
 	}
 
 	// Apply updates to services
-	for service, env := range updates {
-		updated, err := h.UpdateServiceEnv(service, env)
-		if err != nil {
-			result.Error = fmt.Errorf("failed to update %s service environment: %w", service, err)
-			return result
+	allUpdates := make(map[string]string)
+	for _, env := range updates {
+		for key, value := range env {
+			allUpdates[key] = value
 		}
-		if updated {
-			fmt.Printf("Updated %s service environment: %+v\n", service, env)
-			fmt.Printf("Frontend container name: %s\n", frontendContainerName)
-			fmt.Printf("Frontend service name: %s\n", frontendServiceName)
-			result.ContainersToRestart = append(result.ContainersToRestart, docker.Container{
-				Name:        frontendContainerName,
-				ServiceName: frontendServiceName,
-			})
-		}
+	}
+
+	updated, err := h.UpdateEnvFile(allUpdates)
+	if err != nil {
+		result.Error = fmt.Errorf("failed to update environment: %w", err)
+		return result
+	}
+	if updated {
+		fmt.Printf("Updated environment with image changes: %+v\n", allUpdates)
+		fmt.Printf("Frontend container name: %s\n", frontendContainerName)
+		fmt.Printf("Frontend service name: %s\n", frontendServiceName)
+		result.ContainersToRestart = append(result.ContainersToRestart, docker.Container{
+			Name:        frontendContainerName,
+			ServiceName: frontendServiceName,
+		})
 	}
 
 	return result

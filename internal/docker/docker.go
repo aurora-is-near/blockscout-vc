@@ -79,35 +79,6 @@ func (d *Docker) RecreateContainers(containers []Container) error {
 	return nil
 }
 
-// UpdateServiceEnv updates environment variables for a specific service in the compose file
-// Returns the updated compose configuration and whether any changes were made
-func (d *Docker) UpdateServiceEnv(serviceName string, env map[string]string) (bool, error) {
-	updated := false
-	services, ok := d.ComposeFile["services"].(map[string]interface{})
-	if !ok {
-		return false, fmt.Errorf("services section not found")
-	}
-
-	service, ok := services[serviceName].(map[string]interface{})
-	if !ok {
-		return false, fmt.Errorf("service %s not found", serviceName)
-	}
-
-	serviceEnv, ok := service["environment"].(map[string]interface{})
-	if !ok {
-		return false, fmt.Errorf("environment section not found in service")
-	}
-
-	for key, value := range env {
-		if serviceEnv[key] != value {
-			serviceEnv[key] = value
-			updated = true
-		}
-	}
-
-	return updated, nil
-}
-
 // UniqueContainerNames returns a sorted list of unique container names
 func (d *Docker) UniqueContainers(containers []Container) []Container {
 	unique := make(map[string]Container)
