@@ -41,15 +41,34 @@ func (h *ExplorerHandler) Handle(record *Record) HandlerResult {
 	// Extract protocol from explorer URL
 	protocol := h.extractProtocolFromURL(record.ExplorerURL)
 
-	// Get service names from config
+	// Get service names from config with defaults for backward compatibility
 	frontendServiceName := viper.GetString("frontendServiceName")
 	frontendContainerName := viper.GetString("frontendContainerName")
 	backendServiceName := viper.GetString("backendServiceName")
 	backendContainerName := viper.GetString("backendContainerName")
 	statsServiceName := viper.GetString("statsServiceName")
 	statsContainerName := viper.GetString("statsContainerName")
+
+	// Default values for proxy service (for backward compatibility with old configs)
 	proxyServiceName := viper.GetString("proxyServiceName")
+	if proxyServiceName == "" {
+		proxyServiceName = "proxy"
+	}
 	proxyContainerName := viper.GetString("proxyContainerName")
+	if proxyContainerName == "" {
+		// Generate container name based on pattern: {prefix}-proxy
+		// Extract prefix from frontend container name
+		prefix := ""
+		if frontendContainerName != "" && strings.Contains(frontendContainerName, "-") {
+			prefix = strings.Split(frontendContainerName, "-")[0]
+		}
+
+		if prefix != "" {
+			proxyContainerName = fmt.Sprintf("%s-proxy", prefix)
+		} else {
+			proxyContainerName = "proxy" // Fallback if no prefix can be extracted
+		}
+	}
 
 	// Update the sidecar-injected.env file with all explorer-related environment variables
 	// This file is loaded by all services and will override values from other env files
