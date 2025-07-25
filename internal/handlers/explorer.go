@@ -49,26 +49,9 @@ func (h *ExplorerHandler) Handle(record *Record) HandlerResult {
 	statsServiceName := viper.GetString("statsServiceName")
 	statsContainerName := viper.GetString("statsContainerName")
 
-	// Default values for proxy service (for backward compatibility with old configs)
+	// Get proxy service configuration - only restart if both are present
 	proxyServiceName := viper.GetString("proxyServiceName")
-	if proxyServiceName == "" {
-		proxyServiceName = "proxy"
-	}
 	proxyContainerName := viper.GetString("proxyContainerName")
-	if proxyContainerName == "" {
-		// Generate container name based on pattern: {prefix}-proxy
-		// Extract prefix from frontend container name
-		prefix := ""
-		if frontendContainerName != "" && strings.Contains(frontendContainerName, "-") {
-			prefix = strings.Split(frontendContainerName, "-")[0]
-		}
-
-		if prefix != "" {
-			proxyContainerName = fmt.Sprintf("%s-proxy", prefix)
-		} else {
-			proxyContainerName = "proxy" // Fallback if no prefix can be extracted
-		}
-	}
 
 	// Update the sidecar-injected.env file with all explorer-related environment variables
 	// This file is loaded by all services and will override values from other env files
@@ -110,10 +93,14 @@ func (h *ExplorerHandler) Handle(record *Record) HandlerResult {
 				Name:        statsContainerName,
 				ServiceName: statsServiceName,
 			},
-			{
+		}
+
+		// Only add proxy container if both service name and container name are configured
+		if proxyServiceName != "" && proxyContainerName != "" {
+			containersToRestart = append(containersToRestart, docker.Container{
 				Name:        proxyContainerName,
 				ServiceName: proxyServiceName,
-			},
+			})
 		}
 	}
 
