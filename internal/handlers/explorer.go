@@ -53,6 +53,8 @@ func (h *ExplorerHandler) Handle(record *Record) HandlerResult {
 	proxyServiceName := viper.GetString("proxyServiceName")
 	proxyContainerName := viper.GetString("proxyContainerName")
 
+	fmt.Printf("proxyServiceName='%s', proxyContainerName='%s'\n", proxyServiceName, proxyContainerName)
+
 	// Update the sidecar-injected.env file with all explorer-related environment variables
 	// This file is loaded by all services and will override values from other env files
 	sidecarUpdates := map[string]string{
@@ -97,6 +99,7 @@ func (h *ExplorerHandler) Handle(record *Record) HandlerResult {
 
 		// Only add proxy container if both service name and container name are configured
 		if proxyServiceName != "" && proxyContainerName != "" {
+			fmt.Printf("Adding proxy container to restart: %s\n", proxyContainerName)
 			containersToRestart = append(containersToRestart, docker.Container{
 				Name:        proxyContainerName,
 				ServiceName: proxyServiceName,
