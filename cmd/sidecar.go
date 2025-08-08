@@ -4,6 +4,7 @@ import (
 	"blockscout-vc/internal/client"
 	"blockscout-vc/internal/config"
 	"blockscout-vc/internal/heartbeat"
+	"blockscout-vc/internal/server"
 	"blockscout-vc/internal/subscription"
 	"blockscout-vc/internal/worker"
 	"context"
@@ -49,6 +50,19 @@ func StartSidecarCmd() *cobra.Command {
 				}
 			}
 
+			// Initialize and start HTTP server
+			httpServer := server.NewServer()
+			go func() {
+				port := viper.GetString("httpPort")
+				if port == "" {
+					port = "8080" // default port
+				}
+				fmt.Printf("Starting HTTP server on port %s\n", port)
+				if err := httpServer.Start(port); err != nil {
+					fmt.Fprintf(os.Stderr, "HTTP server error: %v\n", err)
+				}
+			}()
+
 			// Initialize WebSocket client
 			supabaseRealtimeUrl := viper.GetString("supabaseRealtimeUrl")
 			supabaseAnonKey := viper.GetString("supabaseAnonKey")
@@ -81,6 +95,13 @@ func StartSidecarCmd() *cobra.Command {
 
 			<-interrupt
 			fmt.Println("\nReceived interrupt signal, shutting down.")
+
+			// Shutdown HTTP server with timeout
+			shutdownCtx, cancelShutdown := context.WithTimeout(ctx, 5*time.Second)
+			defer cancelShutdown()
+			if err := httpServer.Shutdown(shutdownCtx); err != nil {
+				fmt.Fprintf(os.Stderr, "Error shutting down HTTP server: %v\n", err)
+			}
 			return nil
 		},
 	}

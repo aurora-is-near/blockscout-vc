@@ -15,3 +15,4 @@ chainId: "replace-with-actual-chain-id"
 pathToEnvFile: "./config/sidecar-injected.env"
 projectName: "blockscout"
 recreationDelay: 1s  # Supports time.Duration format (e.g., "1s", "500ms", "2m")
+httpPort: "8080"  # HTTP server port for API endpoints
