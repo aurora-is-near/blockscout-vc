@@ -96,11 +96,12 @@ func StartSidecarCmd() *cobra.Command {
 			<-interrupt
 			fmt.Println("\nReceived interrupt signal, shutting down.")
 
-			// Shutdown HTTP server
-			if err := httpServer.Shutdown(ctx); err != nil {
+			// Shutdown HTTP server with timeout
+			shutdownCtx, cancelShutdown := context.WithTimeout(ctx, 5*time.Second)
+			defer cancelShutdown()
+			if err := httpServer.Shutdown(shutdownCtx); err != nil {
 				fmt.Fprintf(os.Stderr, "Error shutting down HTTP server: %v\n", err)
 			}
-
 			return nil
 		},
 	}
