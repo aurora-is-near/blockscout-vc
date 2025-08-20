@@ -91,7 +91,9 @@ func (s *Server) Start(port string) error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	if s.database != nil {
-		s.database.Close()
+		if err := s.database.Close(); err != nil {
+			return fmt.Errorf("failed to close database: %w", err)
+		}
 	}
 	return s.app.ShutdownWithContext(ctx)
 }

@@ -99,7 +99,12 @@ func (d *Database) GetAllTokens() ([]models.TokenInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tokens: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			// Log the error but don't return it since we're in a defer
+			fmt.Printf("Warning: failed to close rows: %v\n", closeErr)
+		}
+	}()
 
 	var tokens []models.TokenInfo
 	for rows.Next() {

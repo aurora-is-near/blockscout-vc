@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -45,7 +46,9 @@ func StartSidecarCmd() *cobra.Command {
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "Error creating env file: %v\n", err)
 					} else {
-						file.Close()
+						if closeErr := file.Close(); closeErr != nil {
+							fmt.Fprintf(os.Stderr, "Error closing env file: %v\n", closeErr)
+						}
 					}
 				}
 			}
@@ -80,7 +83,11 @@ func StartSidecarCmd() *cobra.Command {
 					fmt.Fprintln(os.Stderr, err)
 					os.Exit(1)
 				}
-				defer client.Close()
+				defer func() {
+					if closeErr := client.Close(); closeErr != nil {
+						fmt.Fprintf(os.Stderr, "Error closing client: %v\n", closeErr)
+					}
+				}()
 
 				// Initialize and start the worker
 				worker := worker.New()
@@ -101,7 +108,7 @@ func StartSidecarCmd() *cobra.Command {
 
 			// Wait for interrupt signal or server error
 			interrupt := make(chan os.Signal, 1)
-			signal.Notify(interrupt, os.Interrupt, os.Kill)
+			signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
 			// Wait for interrupt signal or server error
 			select {

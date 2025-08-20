@@ -28,7 +28,11 @@ func (e *Env) ReadEnvFile() error {
 	if err != nil {
 		return fmt.Errorf("failed to read env file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fmt.Printf("Warning: failed to close env file: %v\n", closeErr)
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 
@@ -64,7 +68,11 @@ func (e *Env) WriteEnvFile() error {
 	if err != nil {
 		return fmt.Errorf("failed to create env file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fmt.Printf("Warning: failed to close env file: %v\n", closeErr)
+		}
+	}()
 
 	writer := bufio.NewWriter(file)
 

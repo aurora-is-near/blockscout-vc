@@ -63,7 +63,11 @@ func (c *BlockscoutClient) GetTokens() ([]BlockscoutToken, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tokens: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			fmt.Printf("Warning: failed to close rows: %v\n", closeErr)
+		}
+	}()
 
 	var tokens []BlockscoutToken
 	for rows.Next() {

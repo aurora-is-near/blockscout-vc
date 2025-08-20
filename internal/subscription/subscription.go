@@ -131,7 +131,9 @@ func (s *Subscription) Subscribe(worker *worker.Worker) error {
 
 // Stop closes the subscription connection
 func (s *Subscription) Stop() {
-	s.client.Close()
+	if err := s.client.Close(); err != nil {
+		log.Printf("Warning: failed to close subscription client: %v", err)
+	}
 }
 
 // NewPostgresChanges creates a PostgresChanges instance from a raw message
@@ -190,7 +192,11 @@ func (s *Subscription) InitialCheck(worker *worker.Worker) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close database connection: %v", closeErr)
+		}
+	}()
 
 	// Query the current state - limit 1 since there should be only one record
 	query := fmt.Sprintf("SELECT id, name, base_token_symbol, chain_id, network_logo, network_logo_dark, favicon, explorer_url, created_at, updated_at FROM %s WHERE chain_id = $1 LIMIT 1", table)
@@ -198,7 +204,11 @@ func (s *Subscription) InitialCheck(worker *worker.Worker) error {
 	if err != nil {
 		return fmt.Errorf("failed to query database: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close rows: %v", closeErr)
+		}
+	}()
 
 	// Process each record using the same handlers as real-time updates
 	for rows.Next() {

@@ -119,7 +119,11 @@ func (h *ImageHandler) validateImage(imageURL string) error {
 	if err != nil {
 		return fmt.Errorf("failed to access image: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			fmt.Printf("Warning: failed to close response body: %v\n", closeErr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("image not accessible, status code: %d", resp.StatusCode)

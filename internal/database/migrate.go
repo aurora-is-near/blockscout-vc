@@ -64,7 +64,11 @@ func createDatabaseIfNotExists(dbURL string) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to default database: %w", err)
 	}
-	defer defaultDB.Close()
+	defer func() {
+		if closeErr := defaultDB.Close(); closeErr != nil {
+			fmt.Printf("Warning: failed to close default database connection: %v\n", closeErr)
+		}
+	}()
 
 	// Check if our database exists
 	var exists bool
