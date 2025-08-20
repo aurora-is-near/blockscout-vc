@@ -121,8 +121,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 // getTokenInfo handles the token info endpoint
 func (s *Server) getTokenInfo(c *fiber.Ctx) error {
-	chainId := c.Params("chainId")
 	tokenAddress := c.Params("tokenAddress")
+	chainId := config.GetChainID()
 
 	// Normalize address to lowercase to match stored format
 	tokenAddress = strings.ToLower(tokenAddress)

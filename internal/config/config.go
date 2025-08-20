@@ -51,6 +51,11 @@ func GetAuthPassword() string {
 	return viper.GetString("auth.password")
 }
 
+// GetChainID returns the configured chain ID
+func GetChainID() string {
+	return viper.GetString("chainId")
+}
+
 // InitConfig initializes the application configuration using viper.
 // If configPath is provided, it will use that specific file,
 // otherwise it will look for 'local.yaml' in the config directory
