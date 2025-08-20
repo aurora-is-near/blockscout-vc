@@ -12,8 +12,8 @@ COPY go.mod go.sum ./
 # Copy the source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o app .
+# Build the application with embedded templates and migrations
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
 
 # Final stage
 FROM alpine:3.21.2

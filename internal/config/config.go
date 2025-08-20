@@ -2,9 +2,54 @@ package config
 
 import (
 	"log"
+	"strings"
 
 	"github.com/spf13/viper"
 )
+
+// Config holds the application configuration
+type Config struct {
+	CORS CORSConfig
+	Auth AuthConfig
+}
+
+// CORSConfig holds CORS-related configuration
+type CORSConfig struct {
+	AllowedOrigins []string
+}
+
+// AuthConfig holds authentication-related configuration
+type AuthConfig struct {
+	Username string
+	Password string
+}
+
+// GetCORSAllowedOrigins returns the list of allowed CORS origins
+func GetCORSAllowedOrigins() []string {
+	originsStr := viper.GetString("cors.allowedOrigins")
+	if originsStr == "" {
+		// Safe default: no origins allowed
+		return []string{}
+	}
+
+	// Split comma-separated origins and trim whitespace
+	origins := strings.Split(originsStr, ",")
+	for i, origin := range origins {
+		origins[i] = strings.TrimSpace(origin)
+	}
+
+	return origins
+}
+
+// GetAuthUsername returns the authentication username
+func GetAuthUsername() string {
+	return viper.GetString("auth.username")
+}
+
+// GetAuthPassword returns the authentication password
+func GetAuthPassword() string {
+	return viper.GetString("auth.password")
+}
 
 // InitConfig initializes the application configuration using viper.
 // If configPath is provided, it will use that specific file,

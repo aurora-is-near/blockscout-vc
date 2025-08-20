@@ -24,6 +24,54 @@ table: "silos"
 chainId: 10
 ```
 
+## Authentication
+
+The service includes basic authentication (username/password) to protect sensitive endpoints while maintaining public access to read-only operations.
+
+### Authentication Configuration
+
+Configure authentication in your config.yaml file:
+
+```yaml
+# config.yaml
+auth:
+  username: "admin"
+  password: "your-secure-password"
+```
+
+### Protected vs Public Endpoints
+
+#### 🔒 Protected Endpoints (Authentication Required)
+- `GET /` - Token Management Dashboard
+- `GET /api/v1/tokens/paginated` - List tokens with pagination
+- `POST /api/v1/tokens` - Create/update tokens
+- `GET /api/v1/blockscout/tokens` - Fetch Blockscout tokens
+- `GET /api/v1/blockscout/tokens/:address` - Search specific token
+
+#### 🌐 Public Endpoints (No Authentication Required)
+- `GET /api/v1/chains/:chainId/token-infos/:tokenAddress` - Get token information
+
+### Using Authentication
+
+Include credentials in the `Authorization` header or use curl's `-u` flag:
+
+```bash
+# For protected endpoints
+curl -u username:password \
+     http://localhost:8080/api/v1/tokens/paginated
+
+# Or with Authorization header
+curl -H "Authorization: Basic $(echo -n 'username:password' | base64 -w0)" \
+     http://localhost:8080/api/v1/tokens/paginated
+
+# For public endpoints (no auth required)
+curl http://localhost:8080/api/v1/chains/1313161575/token-infos/0x123...
+```
+
+### Development Mode
+
+If no `auth.username` and `auth.password` are set in config, authentication is disabled and all endpoints are accessible (useful for development).
+
 ## Running the Service with Docker Compose
 
 The service can be deployed using Docker Compose. Below is an example configuration:
@@ -35,9 +83,12 @@ services:
         - sh
         - -c
         - /app/app sidecar --config /app/config/local.yaml
-    container_name: sidecar
+    container_name: blockscout-vc-sidecar
     image: ghcr.io/aurora-is-near/blockscout-vc:latest
     restart: unless-stopped
+    environment:
+        # Authentication is configured via config.yaml file
+        # No environment variables needed for auth
     volumes:
         - ./config:/app/config
         - /var/run/docker.sock:/var/run/docker.sock
@@ -79,6 +130,9 @@ docker logs -f blockscout-vc-sidecar
 - Validates configuration changes before applying
 - Tracks explorer URL changes and updates related environment variables
 - Uses template-based environment variable management
+- **Token Management Dashboard** with embedded templates
+- **Basic Authentication** for protected endpoints
+- **Public Token Info Access** for read-only operations
 
 ## Development
 

@@ -1,6 +1,13 @@
-supabaseUrl: "postgresql://postgres:postgres@localhost:5432/postgres"
+# Database connections - 3 distinct databases
+sidecarDatabaseUrl: "postgresql://postgres:postgres@localhost:5432/blockscout_vc?sslmode=disable"
+blockscoutDatabaseUrl: "postgresql://postgres:postgres@localhost:5432/blockscout?sslmode=disable"
+supabaseUrl: "postgresql://postgres:postgres@localhost:5432/supabase?sslmode=disable"
+
+# Supabase configuration
 supabaseRealtimeUrl: "wss://localhost:5432/realtime/v1/websocket"
 supabaseAnonKey: "replace-with-actual-anon-key"
+
+# Docker compose configuration
 pathToDockerCompose: "./config/docker-compose.yaml"
 frontendServiceName: "frontend"
 frontendContainerName: "frontend"
@@ -10,9 +17,24 @@ statsServiceName: "stats"
 statsContainerName: "stats"
 proxyServiceName: "proxy"
 proxyContainerName: "proxy"
+
+# Table and chain configuration
 table: "silos"
 chainId: "replace-with-actual-chain-id"
+
+# Blockscout integration
 pathToEnvFile: "./config/sidecar-injected.env"
 projectName: "blockscout"
-recreationDelay: 1s  # Supports time.Duration format (e.g., "1s", "500ms", "2m")
-httpPort: "8080"  # HTTP server port for API endpoints
+recreationDelay: 1s
+
+# HTTP server configuration
+httpPort: "8080"
+
+# CORS configuration
+cors:
+  allowedOrigins: "http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080"
+
+# Authentication configuration
+auth:
+  username: "admin"  # Username for basic authentication
+  password: "your-secure-password"  # Password for basic authentication
