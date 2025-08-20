@@ -233,11 +233,20 @@ func (s *Server) upsertToken(c *fiber.Ctx) error {
 
 // tokenManagementPage serves the HTML page for token management
 func (s *Server) tokenManagementPage(c *fiber.Ctx) error {
+	// Get the configured chain ID
+	chainID := config.GetChainID()
+	if chainID == "" {
+		return c.Status(fiber.StatusInternalServerError).SendString("Chain ID not configured")
+	}
+
 	// Get the embedded HTML template content
 	htmlContent, err := getTemplateContent()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Template not found")
 	}
+
+	// Replace the template placeholder with the actual chain ID
+	htmlContent = strings.ReplaceAll(htmlContent, "{{.ChainID}}", chainID)
 
 	c.Set("Content-Type", "text/html")
 	return c.SendString(htmlContent)
