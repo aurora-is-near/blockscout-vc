@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Aurora Token Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #111111;
+            border-radius: 20px;
+            border: 1px solid #2a2a2a;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tabs {
+            display: flex;
+            background: #1a1a1a;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        .tab.active {
+            background: #111111;
+            border-bottom-color: #667eea;
+            color: #667eea;
+        }
+
+        .tab:hover:not(.active) {
+            background: #222222;
+            color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 40px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            padding: 25px;
+            border-radius: 16px;
+            border: 1px solid #333333;
+            text-align: center;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: #667eea;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: #cccccc;
+            font-weight: 500;
+        }
+
+        .form-section {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .form-section h3 {
+            color: #ffffff;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #cccccc;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #333333;
+            border-radius: 8px;
+            background: #222222;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Authentication form specific styles */
+        #authSection input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+            background: rgba(0,0,0,0.5);
+        }
+
+        #authSection input:hover {
+            border-color: rgba(255,255,255,0.4);
+            background: rgba(0,0,0,0.4);
+        }
+
+        #authSection .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+            border: 1px solid #444444;
+        }
+
+        .btn-secondary:hover {
+            border-color: #667eea;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+        }
+
+        .search-bar {
+            margin-bottom: 30px;
+        }
+
+        .search-bar input {
+            width: 100%;
+            padding: 16px 20px;
+            border: 1px solid #333333;
+            border-radius: 12px;
+            background: #1a1a1a;
+            color: #ffffff;
+            font-size: 1.1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .search-bar input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-bar input::placeholder {
+            color: #666666;
+        }
+
+        .tokens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .token-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border: 1px solid #333333;
+            border-radius: 16px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .token-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .token-card:hover {
+            transform: translateY(-5px);
+            border-color: #667eea;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        .token-card:hover::before {
+            opacity: 1;
+        }
+
+        .token-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .token-address {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            color: #667eea;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .token-chain {
+            background: #333333;
+            color: #cccccc;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .token-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+
+        .token-symbol {
+            font-size: 1.1rem;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .token-details {
+            color: #cccccc;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .token-details div {
+            margin-bottom: 8px;
+        }
+
+        .token-details strong {
+            color: #ffffff;
+        }
+
+        .token-details a {
+            color: #667eea;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .token-details a:hover {
+            color: #764ba2;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #cccccc;
+            font-size: 1.1rem;
+        }
+
+        .error-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #ff6b6b;
+            font-size: 1.1rem;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+
+        .success-message {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4caf50;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .error-message {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff6b6b;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 16px;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .tab {
+                padding: 20px;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tokens-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Aurora Token Management</h1>
+            <p>Manage your local tokens and import from Blockscout</p>
+        </div>
+
+        <!-- Authentication Section - Moved below header for better focus -->
+        <div id="authSection" style="margin: 0 0 30px 0; padding: 25px; background: linear-gradient(135deg, rgba(26,26,46,0.9) 0%, rgba(22,33,62,0.9) 100%); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);">
+            <div id="loginForm">
+                <h3 style="margin: 0 0 20px 0; color: #ffffff; font-size: 1.4rem; text-align: center;">🔐 Authentication Required</h3>
+                <form onsubmit="login(); return false;" style="display: flex; gap: 15px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="username" name="username" placeholder="Username" required 
+                           style="padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; min-width: 180px; font-size: 1rem; transition: all 0.3s ease;">
+                    <input type="password" id="password" name="password" placeholder="Password" required 
+                           style="padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; min-width: 180px; font-size: 1rem; transition: all 0.3s ease;">
+                    <button type="submit" class="btn" style="padding: 12px 24px; font-size: 1rem; font-weight: 600;">Login</button>
+                </form>
+            </div>
+            <div id="userInfo" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #4caf50; font-size: 1.1rem;">✅ Authenticated as <span id="currentUser" style="font-weight: 600;"></span></span>
+                    <button class="btn btn-secondary logout-btn" style="padding: 8px 16px; font-size: 0.9rem;">Logout</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="local">Local Tokens</div>
+            <div class="tab" data-tab="blockscout">Blockscout Tokens</div>
+        </div>
+
+        <!-- Local Tokens Tab -->
+        <div id="local-tab" class="tab-content active">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="local-token-count">0</div>
+                    <div class="stat-label">Local Tokens</div>
+                </div>
+            </div>
+
+            <div id="tokenFormSection" class="form-section" style="display: none;">
+                <div class="form-header">
+                    <h3 id="formTitle">Add New Token</h3>
+                </div>
+                
+                <form id="tokenForm">
+                    <input type="hidden" id="chainId" name="chainId" value="1313161575">
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="tokenAddress">Token Address *</label>
+                            <input type="text" id="tokenAddress" name="tokenAddress" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tokenName">Token Name *</label>
+                            <input type="text" id="tokenName" name="tokenName" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="tokenSymbol">Token Symbol *</label>
+                            <input type="text" id="tokenSymbol" name="tokenSymbol" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="projectName">Project Name</label>
+                            <input type="text" id="projectName" name="projectName">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="projectDescription">Project Description</label>
+                        <textarea id="projectDescription" name="projectDescription"></textarea>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="projectWebsite">Project Website</label>
+                            <input type="text" id="projectWebsite" name="projectWebsite">
+                        </div>
+                        <div class="form-group">
+                            <label for="projectEmail">Project Email</label>
+                            <input type="text" id="projectEmail" name="projectEmail">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="iconUrl">Icon URL</label>
+                        <input type="text" id="iconUrl" name="iconUrl">
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="projectSector">Project Sector</label>
+                            <input type="text" id="projectSector" name="projectSector">
+                        </div>
+                        <div class="form-group">
+                            <label for="docs">Documentation URL</label>
+                            <input type="text" id="docs" name="docs">
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin: 20px 0 15px 0; color: #ffffff;">Social Links</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="github">GitHub</label>
+                            <input type="text" id="github" name="github">
+                        </div>
+                        <div class="form-group">
+                            <label for="telegram">Telegram</label>
+                            <input type="text" id="telegram" name="telegram">
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="twitter">Twitter</label>
+                            <input type="text" id="twitter" name="twitter">
+                        </div>
+                        <div class="form-group">
+                            <label for="discord">Discord</label>
+                            <input type="text" id="discord" name="discord">
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="linkedin">LinkedIn</label>
+                            <input type="text" id="linkedin" name="linkedin">
+                        </div>
+                        <div class="form-group">
+                            <label for="facebook">Facebook</label>
+                            <input type="text" id="facebook" name="facebook">
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="medium">Medium</label>
+                            <input type="text" id="medium" name="medium">
+                        </div>
+                        <div class="form-group">
+                            <label for="reddit">Reddit</label>
+                            <input type="text" id="reddit" name="reddit">
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="slack">Slack</label>
+                            <input type="text" id="slack" name="slack">
+                        </div>
+                        <div class="form-group">
+                            <label for="openSea">OpenSea</label>
+                            <input type="text" id="openSea" name="openSea">
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin: 20px 0 15px 0; color: #ffffff;">Market Data</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="coinMarketCapTicker">CoinMarketCap Ticker</label>
+                            <input type="text" id="coinMarketCapTicker" name="coinMarketCapTicker">
+                        </div>
+                        <div class="form-group">
+                            <label for="coinGeckoTicker">CoinGecko Ticker</label>
+                            <input type="text" id="coinGeckoTicker" name="coinGeckoTicker">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="defiLlamaTicker">DeFi Llama Ticker</label>
+                        <input type="text" id="defiLlamaTicker" name="defiLlamaTicker">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="support">Support Information</label>
+                        <textarea id="support" name="support"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn">Save Token</button>
+                </form>
+            </div>
+
+            <div id="message"></div>
+            
+            <div class="tokens-grid" id="localTokensList">
+                <div class="loading">Loading local tokens...</div>
+            </div>
+        </div>
+
+        <!-- Blockscout Tokens Tab -->
+        <div id="blockscout-tab" class="tab-content">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="blockscout-token-count">0</div>
+                    <div class="stat-label">Blockscout Tokens</div>
+                </div>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" id="blockscoutSearch" placeholder="Search tokens by address..." onkeyup="searchBlockscoutTokens()">
+            </div>
+
+            <div class="tokens-grid" id="blockscoutTokensList">
+                <div class="loading">Loading Blockscout tokens...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isEditingToken = false;
+        let blockscoutTokensData = [];
+        
+        // Authentication credentials (will be prompted if not set)
+        let authCredentials = null;
+        
+        // Check for stored authentication on page load
+        function checkStoredAuth() {
+            const stored = localStorage.getItem('authCredentials');
+            const storedUser = localStorage.getItem('authUsername');
+            const storedTime = localStorage.getItem('authTimestamp');
+            
+            if (stored && storedUser && storedTime) {
+                // Check if credentials are still valid (24 hours)
+                const now = Date.now();
+                const storedTimestamp = parseInt(storedTime);
+                const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+                
+                if (now - storedTimestamp < maxAge) {
+                    authCredentials = stored;
+                    document.getElementById('currentUser').textContent = storedUser;
+                    hideLoginForm();
+                    loadLocalTokens();
+                    loadBlockscoutTokens();
+                    return true;
+                } else {
+                    // Credentials expired, clear them
+                    localStorage.removeItem('authCredentials');
+                    localStorage.removeItem('authUsername');
+                    localStorage.removeItem('authTimestamp');
+                }
+            }
+            return false;
+        }
+        
+        // Function to get authentication credentials
+        function getAuthCredentials() {
+            if (authCredentials) {
+                return authCredentials;
+            }
+            
+            // Show login form if not authenticated
+            showLoginForm();
+            return null;
+        }
+        
+        // Function to show login form
+        function showLoginForm() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('userInfo').style.display = 'none';
+            
+            // Focus on username field and ensure it's focusable
+            setTimeout(() => {
+                const usernameField = document.getElementById('username');
+                if (usernameField) {
+                    usernameField.focus();
+                    usernameField.select();
+                }
+            }, 100);
+        }
+        
+        // Function to hide login form
+        function hideLoginForm() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('userInfo').style.display = 'block';
+        }
+        
+        // Login function
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                alert('Please enter both username and password');
+                return;
+            }
+            
+            authCredentials = btoa(username + ':' + password);
+            document.getElementById('currentUser').textContent = username;
+            
+            // Store credentials in localStorage for persistence
+            localStorage.setItem('authCredentials', authCredentials);
+            localStorage.setItem('authUsername', username);
+            localStorage.setItem('authTimestamp', Date.now().toString());
+            
+            hideLoginForm();
+            
+            // Reload data after successful login
+            loadLocalTokens();
+            loadBlockscoutTokens();
+        }
+        
+        // Logout function
+        function logout() {
+            authCredentials = null;
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            
+            // Clear stored credentials
+            localStorage.removeItem('authCredentials');
+            localStorage.removeItem('authUsername');
+            localStorage.removeItem('authTimestamp');
+            
+            showLoginForm();
+            
+            // Clear data
+            document.getElementById('localTokensList').innerHTML = '<div class="loading">Please login to view tokens</div>';
+            document.getElementById('blockscoutTokensList').innerHTML = '<div class="loading">Please login to view tokens</div>';
+        }
+        
+        // Function to make authenticated fetch requests
+        function authenticatedFetch(url, options = {}) {
+            const credentials = getAuthCredentials();
+            if (!credentials) {
+                return Promise.reject(new Error('Authentication required'));
+            }
+            
+            return fetch(url, {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'Authorization': 'Basic ' + credentials
+                }
+            });
+        }
+
+        // HTML escaping function to prevent XSS and encoding issues
+        function escapeHtml(text) {
+            if (text === null || text === undefined || text === '') {
+                return '';
+            }
+            try {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            } catch (e) {
+                return String(text);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is already authenticated from localStorage
+            if (!checkStoredAuth()) {
+                // Show login form if not authenticated
+                showLoginForm();
+                
+                // Don't load data until authenticated
+                document.getElementById('localTokensList').innerHTML = '<div class="loading">Please login to view tokens</div>';
+                document.getElementById('blockscoutTokensList').innerHTML = '<div class="loading">Please login to view tokens</div>';
+            }
+        });
+
+        // Tab switching
+        function switchTab(tabName, loadData = true, event = null) {
+            // Update tab classes
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Safely get the tab element, falling back to DOM lookup if event is undefined
+            let tabElement = null;
+            if (event && event.target) {
+                tabElement = event.target;
+            } else {
+                // Fallback: find the tab by ID or use the first tab
+                tabElement = document.getElementById(tabName + '-tab') || document.querySelector('.tab');
+            }
+            
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
+            document.getElementById(tabName + '-tab').classList.add('active');
+            hideForm()
+            // Load data for the selected tab only if requested
+            if (loadData) {
+                if (tabName === 'local') {
+                    loadLocalTokens();
+                } else {
+                    loadBlockscoutTokens();
+                }
+            }
+        }
+
+        // Local tokens functions
+        function loadLocalTokens() {
+            const tokensList = document.getElementById('localTokensList');
+            tokensList.innerHTML = '<div class="loading">Loading local tokens...</div>';
+
+            authenticatedFetch('/api/v1/tokens')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        tokensList.innerHTML = `<div class="error-message">${escapeHtml(data.error)}</div>`;
+                        return;
+                    }
+
+                    displayLocalTokens(data.tokens);
+                    updateLocalStats(data.total);
+                })
+                .catch(error => {
+                    tokensList.innerHTML = `<div class="error-message">Error loading tokens: ${escapeHtml(error.message)}</div>`;
+                });
+        }
+
+        function displayLocalTokens(tokens) {
+            const tokensList = document.getElementById('localTokensList');
+            
+            if (!tokens || tokens.length === 0) {
+                tokensList.innerHTML = '<div class="loading">No local tokens found.</div>';
+                return;
+            }
+
+            tokensList.innerHTML = tokens.map(token => {
+                if (!token) return '';
+                
+                return `
+                <div class="token-card">
+                    <div class="token-header">
+                        <div>
+                            <div class="token-address">${escapeHtml(token.tokenAddress) || 'N/A'}</div>
+                            <span class="token-chain">Chain: ${escapeHtml(token.chainId) || 'N/A'}</span>
+                        </div>
+                        <button class="btn btn-secondary edit-local-token-btn" data-token-address="${escapeHtml(token.tokenAddress) || ''}" data-chain-id="${escapeHtml(token.chainId) || ''}">Edit</button>
+                    </div>
+                    <div class="token-name">${escapeHtml(token.projectName || token.tokenName) || 'Unnamed Token'}</div>
+                    <div class="token-symbol">${escapeHtml(token.tokenSymbol) || 'N/A'}</div>
+                    <div class="token-details">
+                        ${token.projectDescription ? `<div><strong>Description:</strong> ${escapeHtml(token.projectDescription.substring(0, 100))}${token.projectDescription.length > 100 ? '...' : ''}</div>` : ''}
+                        ${token.projectWebsite ? `<div><strong>Website:</strong> <a href="${escapeHtml(token.projectWebsite)}" target="_blank">${escapeHtml(token.projectWebsite)}</a></div>` : ''}
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        function updateLocalStats(total) {
+            document.getElementById('local-token-count').textContent = total;
+        }
+
+        // Blockscout tokens functions
+        function loadBlockscoutTokens() {
+            const tokensList = document.getElementById('blockscoutTokensList');
+            tokensList.innerHTML = '<div class="loading">Loading Blockscout tokens...</div>';
+
+            authenticatedFetch('/api/v1/blockscout/tokens')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        tokensList.innerHTML = `<div class="error-message">${escapeHtml(data.error)}</div>`;
+                        return;
+                    }
+
+                    displayBlockscoutTokens(data.tokens);
+                    updateBlockscoutStats(data.total);
+                })
+                .catch(error => {
+                    tokensList.innerHTML = `<div class="error-message">Error loading tokens: ${escapeHtml(error.message)}</div>`;
+                });
+        }
+
+        function displayBlockscoutTokens(tokens) {
+            const tokensList = document.getElementById('blockscoutTokensList');
+            
+            if (!tokens || tokens.length === 0) {
+                tokensList.innerHTML = '<div class="loading">No Blockscout tokens found.</div>';
+                return;
+            }
+
+            // Store tokens data globally
+            blockscoutTokensData = tokens;
+            tokensList.innerHTML = tokens.map((token, index) => {
+                if (!token) return '';
+                
+                return `
+                <div class="token-card">
+                    <div class="token-header">
+                        <div>
+                            <div class="token-address">${escapeHtml(token.address) || 'N/A'}</div>
+                            <span class="token-chain">Token</span>
+                        </div>
+                        <button class="btn btn-secondary import-blockscout-token-btn" data-token-index="${index}">Import</button>
+                    </div>
+                    <div class="token-name">${escapeHtml(token.name) || 'Unnamed Token'}</div>
+                    <div class="token-symbol">${escapeHtml(token.symbol) || 'N/A'}</div>
+                    <div class="token-details">
+                        <div><strong>Address:</strong> ${escapeHtml(token.address) || 'N/A'}</div>
+                        <div><strong>Symbol:</strong> ${escapeHtml(token.symbol) || 'N/A'}</div>
+                        <div><strong>Name:</strong> ${escapeHtml(token.name) || 'N/A'}</div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        function updateBlockscoutStats(total) {
+            document.getElementById('blockscout-token-count').textContent = total || 'N/A';
+        }
+
+        // Search function
+        function searchBlockscoutTokens() {
+            const searchTerm = document.getElementById('blockscoutSearch').value.trim();
+            if (searchTerm.length === 0) {
+                loadBlockscoutTokens();
+                return;
+            }
+
+            const tokensList = document.getElementById('blockscoutTokensList');
+            tokensList.innerHTML = '<div class="loading">Searching...</div>';
+
+            authenticatedFetch(`/api/v1/blockscout/tokens/${searchTerm}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        tokensList.innerHTML = `<div class="error-message">${escapeHtml(data.error)}</div>`;
+                        return;
+                    }
+
+                    // Store single token data globally
+                    blockscoutTokensData = [data];
+                    
+                    // Display single token result
+                    tokensList.innerHTML = `
+                        <div class="token-card">
+                            <div class="token-header">
+                                <div>
+                                    <div class="token-address">${escapeHtml(data.address) || 'N/A'}</div>
+                                    <span class="token-chain">Token</span>
+                                </div>
+                                <button class="btn btn-secondary import-blockscout-token-btn" data-token-index="0">Import</button>
+                            </div>
+                            <div class="token-name">${escapeHtml(data.name) || 'Unnamed Token'}</div>
+                            <div class="token-symbol">${escapeHtml(data.symbol) || 'N/A'}</div>
+                            <div class="token-details">
+                                <div><strong>Address:</strong> ${escapeHtml(data.address) || 'N/A'}</div>
+                                <div><strong>Symbol:</strong> ${escapeHtml(data.symbol) || 'N/A'}</div>
+                                <div><strong>Name:</strong> ${escapeHtml(data.name) || 'N/A'}</div>
+                            </div>
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    tokensList.innerHTML = `<div class="error-message">Error searching: ${escapeHtml(error.message)}</div>`;
+                });
+        }
+
+        // Import function by index
+        function importFromBlockscoutByIndex(index) {
+            if (!blockscoutTokensData || !blockscoutTokensData[index]) {
+                return;
+            }
+            
+            const token = blockscoutTokensData[index];
+            
+            // Switch to local tokens tab without loading data
+            switchTab('local', false);
+            
+            // Reset edit state since this is creating a new token
+            isEditingToken = false;
+            
+            // Set the token address
+            document.getElementById('tokenAddress').value = token.address || '';
+            
+            // Populate form with token data
+            const fieldMapping = {
+                'address': 'tokenAddress',
+                'name': 'tokenName',
+                'symbol': 'tokenSymbol'
+            };
+            clearForm();
+            Object.keys(fieldMapping).forEach(key => {
+                const formFieldId = fieldMapping[key];
+                const field = document.getElementById(formFieldId);
+                if (field && token[key]) {
+                    field.value = token[key];
+                }
+            });
+            
+            // Show the form
+            showAddForm();
+        }
+
+        // Form validation
+        function validateForm() {
+            const tokenAddress = document.getElementById('tokenAddress').value.trim();
+            const chainId = document.getElementById('chainId').value.trim();
+            
+            if (!tokenAddress) {
+                showMessage('Token Address is required', 'error');
+                return false;
+            }
+            
+            if (!chainId) {
+                showMessage('Chain ID is required', 'error');
+                return false;
+            }
+            
+            // Basic Ethereum address validation
+            if (!/^0x[a-fA-F0-9]{40}$/.test(tokenAddress)) {
+                showMessage('Invalid Ethereum address format', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Show form for adding new token
+        function showAddForm() {
+            isEditingToken = false;
+            document.getElementById('formTitle').textContent = 'Add New Token';
+            document.getElementById('tokenFormSection').style.display = 'block';
+        }
+
+        // Show form for editing existing token
+        function showEditForm() {
+            isEditingToken = true;
+            document.getElementById('formTitle').textContent = 'Edit Token';
+            document.getElementById('tokenFormSection').style.display = 'block';
+        }
+
+        // Hide form
+        function hideForm() {
+            document.getElementById('tokenFormSection').style.display = 'none';
+            clearForm();
+        }
+
+        // Clear form and reset edit state
+        function clearForm() {
+            document.getElementById('tokenForm').reset();
+            isEditingToken = false;
+        }
+
+        // Form handling
+        document.getElementById('tokenForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!validateForm()) {
+                return;
+            }
+            
+            const formData = new FormData(e.target);
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+            
+            authenticatedFetch('/api/v1/tokens', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return response.json();
+            })
+            .then(result => {
+                if (result.error) {
+                    showMessage(`Error: ${result.error}`, 'error');
+                } else {
+                    const message = isEditingToken ? 'Token updated successfully!' : 'Token created successfully!';
+                    showMessage(message, 'success');
+                    hideForm();
+                    loadLocalTokens();
+                }
+            })
+            .catch(error => {
+                showMessage(`Error saving token: ${error.message}`, 'error');
+            });
+        });
+
+        function editLocalToken(tokenAddress, chainId) {
+            authenticatedFetch(`/api/v1/chains/${chainId}/token-infos/${tokenAddress}`)
+                .then(response => response.json())
+                .then(token => {
+                    console.log('Token data received:', token); // Debug log
+                    
+                    // Map API response fields to form field IDs
+                    const fieldMapping = {
+                        'tokenName': 'tokenName',
+                        'tokenSymbol': 'tokenSymbol',
+                        'tokenAddress': 'tokenAddress',
+                        'projectName': 'projectName',
+                        'projectDescription': 'projectDescription',
+                        'projectWebsite': 'projectWebsite',
+                        'projectEmail': 'projectEmail',
+                        'iconUrl': 'iconUrl',
+                        'projectSector': 'projectSector',
+                        'docs': 'docs',
+                        'github': 'github',
+                        'telegram': 'telegram',
+                        'twitter': 'twitter',
+                        'discord': 'discord',
+                        'linkedin': 'linkedin',
+                        'facebook': 'facebook',
+                        'medium': 'medium',
+                        'reddit': 'reddit',
+                        'slack': 'slack',
+                        'openSea': 'openSea',
+                        'coinMarketCapTicker': 'coinMarketCapTicker',
+                        'coinGeckoTicker': 'coinGeckoTicker',
+                        'defiLlamaTicker': 'defiLlamaTicker',
+                        'support': 'support'
+                    };
+                    
+                    Object.keys(token).forEach(key => {
+                        const formFieldId = fieldMapping[key];
+                        if (formFieldId) {
+                            const field = document.getElementById(formFieldId);
+                            if (field) {
+                                // Backend now handles null values properly, so we can just use the value directly
+                                const value = token[key] || '';
+                                field.value = value;
+                            }
+                        }
+                    });
+                    
+                    // Show the edit form
+                    showEditForm();
+                })
+                .catch(error => {
+                    showMessage('Error loading token data: ' + error.message, 'error');
+                });
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="${type}-message">${message}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        // Event listener setup for safe button handling
+        function setupEventListeners() {
+            // Handle edit local token buttons
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('edit-local-token-btn')) {
+                    const tokenAddress = e.target.dataset.tokenAddress;
+                    const chainId = e.target.dataset.chainId;
+                    if (tokenAddress && chainId) {
+                        editLocalToken(tokenAddress, chainId);
+                    }
+                }
+                
+                // Handle import blockscout token buttons
+                if (e.target.classList.contains('import-blockscout-token-btn')) {
+                    const tokenIndex = parseInt(e.target.dataset.tokenIndex);
+                    if (!isNaN(tokenIndex)) {
+                        importFromBlockscoutByIndex(tokenIndex);
+                    }
+                }
+
+                // Handle logout button
+                if (e.target.classList.contains('logout-btn')) {
+                    logout();
+                }
+
+                // Handle tab switching
+                if (e.target.classList.contains('tab')) {
+                    const tabName = e.target.dataset.tab;
+                    if (tabName) {
+                        switchTab(tabName);
+                    }
+                }
+            });
+        }
+
+        // Initialize event listeners when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupEventListeners);
+        } else {
+            setupEventListeners();
+        }
+    </script>
+</body>
+</html>
