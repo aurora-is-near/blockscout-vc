@@ -78,32 +78,37 @@ func StartSidecarCmd() *cobra.Command {
 			supabaseRealtimeUrl := viper.GetString("supabaseRealtimeUrl")
 			supabaseAnonKey := viper.GetString("supabaseAnonKey")
 			if supabaseUrl != "" && supabaseRealtimeUrl != "" && supabaseAnonKey != "" {
-				client := client.New(supabaseRealtimeUrl, supabaseAnonKey)
-				if err := client.Connect(); err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
-				}
-				defer func() {
-					if closeErr := client.Close(); closeErr != nil {
-						fmt.Fprintf(os.Stderr, "Error closing client: %v\n", closeErr)
+				realtimeClient := client.New(supabaseRealtimeUrl, supabaseAnonKey)
+				if err := realtimeClient.Connect(); err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to connect to Supabase realtime: %v\n", err)
+					// Continue without realtime functionality rather than exiting
+					fmt.Println("Continuing without realtime database monitoring...")
+				} else {
+					// Only defer Close if client was successfully created and connected
+					defer func() {
+						if closeErr := realtimeClient.Close(); closeErr != nil {
+							fmt.Fprintf(os.Stderr, "Error closing realtime client: %v\n", closeErr)
+						}
+					}()
+
+					// Initialize and start the worker
+					worker := worker.New()
+					worker.Start(ctx)
+
+					// Initialize and start heartbeat service
+					hb := heartbeat.New(realtimeClient, 30*time.Second)
+					hb.Start()
+					defer hb.Stop()
+
+					// Initialize and start subscription service
+					sub := subscription.New(realtimeClient)
+					if err := sub.Subscribe(worker); err != nil {
+						fmt.Fprintf(os.Stderr, "Failed to subscribe to database changes: %v\n", err)
+						fmt.Println("Continuing without database change monitoring...")
+					} else {
+						defer sub.Stop()
 					}
-				}()
-
-				// Initialize and start the worker
-				worker := worker.New()
-				worker.Start(ctx)
-
-				// Initialize and start heartbeat service
-				hb := heartbeat.New(client, 30*time.Second)
-				hb.Start()
-				defer hb.Stop()
-
-				// Initialize and start subscription service
-				sub := subscription.New(client)
-				if err := sub.Subscribe(worker); err != nil {
-					return fmt.Errorf("failed to subscribe: %w", err)
 				}
-				defer sub.Stop()
 			}
 
 			// Wait for interrupt signal or server error

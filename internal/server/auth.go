@@ -1,45 +1,76 @@
 package server
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
 	"strings"
 
+	"blockscout-vc/internal/config"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/spf13/viper"
 )
 
 // Basic authentication middleware
 func authMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Get credentials from config
-		username := viper.GetString("auth.username")
-		password := viper.GetString("auth.password")
+		// Get credentials from config using project's config getters
+		username := config.GetAuthUsername()
+		password := config.GetAuthPassword()
 
-		// If no credentials are set, allow all requests (development mode)
-		if username == "" || password == "" {
+		// Only disable auth if BOTH username AND password are empty
+		// This prevents fail-open on partial/misconfigured secrets
+		if username == "" && password == "" {
 			return c.Next()
+		}
+
+		// If only one credential is set, require both to be present
+		if username == "" || password == "" {
+			c.Status(fiber.StatusUnauthorized)
+			c.Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			return c.JSON(fiber.Map{
+				"error": "Authentication required - both username and password must be configured",
+			})
 		}
 
 		// Get Authorization header
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			c.Status(fiber.StatusUnauthorized)
+			c.Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			return c.JSON(fiber.Map{
 				"error": "Authorization header required",
 			})
 		}
 
-		// Check if it's Basic auth
-		if !strings.HasPrefix(authHeader, "Basic ") {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+		// Parse Authorization header to extract scheme and credentials
+		// Use case-insensitive scheme comparison as per RFC 7235
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 {
+			c.Status(fiber.StatusUnauthorized)
+			c.Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			return c.JSON(fiber.Map{
 				"error": "Invalid authorization format. Use Basic authentication",
 			})
 		}
 
+		scheme := parts[0]
+		encodedCredentials := parts[1]
+
+		// Case-insensitive scheme check
+		if !strings.EqualFold(scheme, "Basic") {
+			c.Status(fiber.StatusUnauthorized)
+			c.Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			return c.JSON(fiber.Map{
+				"error": "Invalid authorization scheme. Use Basic authentication",
+			})
+		}
+
 		// Extract and decode credentials
-		encodedCredentials := strings.TrimPrefix(authHeader, "Basic ")
 		decodedCredentials, err := base64.StdEncoding.DecodeString(encodedCredentials)
 		if err != nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			c.Status(fiber.StatusUnauthorized)
+			c.Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			return c.JSON(fiber.Map{
 				"error": "Invalid authorization header format",
 			})
 		}
@@ -47,14 +78,21 @@ func authMiddleware() fiber.Handler {
 		// Parse username:password
 		credentials := strings.SplitN(string(decodedCredentials), ":", 2)
 		if len(credentials) != 2 {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			c.Status(fiber.StatusUnauthorized)
+			c.Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			return c.JSON(fiber.Map{
 				"error": "Invalid credentials format",
 			})
 		}
 
-		// Validate credentials
-		if credentials[0] != username || credentials[1] != password {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+		// Validate credentials using constant-time comparison to prevent timing attacks
+		usernameMatch := subtle.ConstantTimeCompare([]byte(credentials[0]), []byte(username)) == 1
+		passwordMatch := subtle.ConstantTimeCompare([]byte(credentials[1]), []byte(password)) == 1
+
+		if !usernameMatch || !passwordMatch {
+			c.Status(fiber.StatusUnauthorized)
+			c.Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			return c.JSON(fiber.Map{
 				"error": "Invalid username or password",
 			})
 		}

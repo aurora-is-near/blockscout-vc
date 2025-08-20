@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -41,15 +42,26 @@ func runMigrations(db *sql.DB) error {
 }
 
 // createDatabaseIfNotExists creates the database if it doesn't exist
+// Uses net/url for robust URL parsing instead of brittle string splitting
 func createDatabaseIfNotExists(dbURL string) error {
-	// Parse the connection string to extract database name
-	// Format: postgresql://user:pass@host:port/dbname?sslmode=disable
-	parts := strings.Split(dbURL, "/")
-	if len(parts) < 4 {
-		return fmt.Errorf("invalid database URL format")
+	// Parse the connection string using net/url for robust parsing
+	u, err := url.Parse(dbURL)
+	if err != nil {
+		return fmt.Errorf("invalid database URL format: %w", err)
 	}
 
-	dbName := strings.Split(parts[len(parts)-1], "?")[0]
+	// Extract database name from the path component
+	// Path format: /dbname or /dbname?query
+	path := strings.TrimPrefix(u.Path, "/")
+	if path == "" {
+		return fmt.Errorf("database name not found in URL path")
+	}
+
+	// Remove query parameters from database name
+	dbName := strings.Split(path, "?")[0]
+	if dbName == "" {
+		return fmt.Errorf("database name is empty")
+	}
 
 	// Validate database name before using it in SQL
 	if err := isValidDatabaseName(dbName); err != nil {
@@ -57,7 +69,10 @@ func createDatabaseIfNotExists(dbURL string) error {
 	}
 
 	// Create connection string to default postgres database
-	defaultDBURL := strings.Replace(dbURL, "/"+dbName, "/postgres", 1)
+	// Clone the parsed URL and set path to "/postgres"
+	defaultURL := *u
+	defaultURL.Path = "/postgres"
+	defaultDBURL := defaultURL.String()
 
 	// Connect to default postgres database
 	defaultDB, err := sql.Open("postgres", defaultDBURL)

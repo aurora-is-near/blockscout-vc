@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Database provides database operations for token information
+// Note: All string fields use TEXT type which can handle NULL values without scan errors
 type Database struct {
 	db *sql.DB
 }
@@ -34,11 +36,17 @@ func NewDatabase() (*Database, error) {
 
 	// Test the connection
 	if err := db.Ping(); err != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			return nil, fmt.Errorf("failed to ping database: %w, and failed to close connection: %w", err, closeErr)
+		}
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	// Run migrations
 	if err := runMigrations(db); err != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			return nil, fmt.Errorf("failed to run migrations: %w, and failed to close connection: %w", err, closeErr)
+		}
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -53,10 +61,10 @@ func (d *Database) Close() error {
 func (d *Database) GetTokenInfo(tokenAddress, chainID string) (*models.TokenInfo, error) {
 	query := `
 		SELECT token_address, chain_id, project_name, project_website, project_email,
-			   icon_url, project_description, project_sector, docs, github, telegram,
-			   linkedin, discord, slack, twitter, opensea, facebook, medium, reddit,
-			   support, coin_market_cap_ticker, coin_gecko_ticker, defi_llama_ticker,
-			   token_name, token_symbol
+		       icon_url, project_description, project_sector, docs, github, telegram,
+		       linkedin, discord, slack, twitter, opensea, facebook, medium, reddit,
+		       support, coin_market_cap_ticker, coin_gecko_ticker, defi_llama_ticker,
+		       token_name, token_symbol
 		FROM token_infos
 		WHERE token_address = $1 AND chain_id = $2
 	`
@@ -87,10 +95,10 @@ func (d *Database) GetTokenInfo(tokenAddress, chainID string) (*models.TokenInfo
 func (d *Database) GetAllTokens() ([]models.TokenInfo, error) {
 	query := `
 		SELECT token_address, chain_id, project_name, project_website, project_email,
-			   icon_url, project_description, project_sector, docs, github, telegram,
-			   linkedin, discord, slack, twitter, opensea, facebook, medium, reddit,
-			   support, coin_market_cap_ticker, coin_gecko_ticker, defi_llama_ticker,
-			   token_name, token_symbol
+		       icon_url, project_description, project_sector, docs, github, telegram,
+		       linkedin, discord, slack, twitter, opensea, facebook, medium, reddit,
+		       support, coin_market_cap_ticker, coin_gecko_ticker, defi_llama_ticker,
+		       token_name, token_symbol
 		FROM token_infos
 		ORDER BY created_at DESC
 	`
@@ -125,10 +133,18 @@ func (d *Database) GetAllTokens() ([]models.TokenInfo, error) {
 		tokens = append(tokens, token)
 	}
 
+	// Check for errors from iterating over rows
+	// This is crucial: rows.Err() catches errors that might occur during iteration
+	// that aren't caught by the individual rows.Scan() calls
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
 	return tokens, nil
 }
 
 // UpsertTokenInfo creates or updates token information using PostgreSQL upsert
+// Manually sets updated_at timestamp instead of relying on database triggers
 func (d *Database) UpsertTokenInfo(form *models.TokenInfoForm) error {
 	query := `
 		INSERT INTO token_infos (
@@ -136,12 +152,12 @@ func (d *Database) UpsertTokenInfo(form *models.TokenInfoForm) error {
 			icon_url, project_description, project_sector, docs, github, telegram,
 			linkedin, discord, slack, twitter, opensea, facebook, medium, reddit,
 			support, coin_market_cap_ticker, coin_gecko_ticker, defi_llama_ticker,
-			token_name, token_symbol
+			token_name, token_symbol, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-			$17, $18, $19, $20, $21, $22, $23, $24, $25
+			$17, $18, $19, $20, $21, $22, $23, $24, $25, CURRENT_TIMESTAMP
 		)
-		ON CONFLICT (token_address, chain_id) 
+		ON CONFLICT ON CONSTRAINT token_infos_pkey
 		DO UPDATE SET
 			project_name = EXCLUDED.project_name,
 			project_website = EXCLUDED.project_website,

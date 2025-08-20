@@ -6,6 +6,7 @@ import (
 	"blockscout-vc/internal/models"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -90,12 +91,32 @@ func (s *Server) Start(port string) error {
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
-	if s.database != nil {
-		if err := s.database.Close(); err != nil {
-			return fmt.Errorf("failed to close database: %w", err)
+	var closeErrors []error
+
+	// Close blockscoutClient if it exists
+	if s.blockscoutClient != nil {
+		if err := s.blockscoutClient.Close(); err != nil {
+			closeErrors = append(closeErrors, fmt.Errorf("failed to close blockscout client: %w", err))
 		}
 	}
-	return s.app.ShutdownWithContext(ctx)
+
+	// Close database if it exists
+	if s.database != nil {
+		if err := s.database.Close(); err != nil {
+			closeErrors = append(closeErrors, fmt.Errorf("failed to close database: %w", err))
+		}
+	}
+
+	// Shutdown the Fiber app
+	if err := s.app.ShutdownWithContext(ctx); err != nil {
+		closeErrors = append(closeErrors, fmt.Errorf("failed to shutdown app: %w", err))
+	}
+
+	// Return combined errors if any occurred, otherwise return nil
+	if len(closeErrors) > 0 {
+		return errors.Join(closeErrors...)
+	}
+	return nil
 }
 
 // getTokenInfo handles the token info endpoint

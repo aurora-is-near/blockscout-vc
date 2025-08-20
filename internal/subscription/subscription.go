@@ -5,12 +5,15 @@ import (
 	"blockscout-vc/internal/docker"
 	"blockscout-vc/internal/handlers"
 	"blockscout-vc/internal/worker"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
+	"time"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -187,6 +190,11 @@ func (s *Subscription) InitialCheck(worker *worker.Worker) error {
 	chainId := viper.GetInt("chainId")
 	table := viper.GetString("table")
 
+	// Validate table identifier to prevent SQL injection
+	if err := safeIdentifier(table); err != nil {
+		return fmt.Errorf("table validation failed: %w", err)
+	}
+
 	// Connect to the database
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -198,9 +206,26 @@ func (s *Subscription) InitialCheck(worker *worker.Worker) error {
 		}
 	}()
 
+	// Create context with timeout for the query
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	// Query the current state - limit 1 since there should be only one record
-	query := fmt.Sprintf("SELECT id, name, base_token_symbol, chain_id, network_logo, network_logo_dark, favicon, explorer_url, created_at, updated_at FROM %s WHERE chain_id = $1 LIMIT 1", table)
-	rows, err := db.Query(query, chainId)
+	// Use COALESCE to handle NULL values for string fields to prevent scan errors
+	// Table name is now safely validated before use
+	query := fmt.Sprintf(`
+		SELECT id, 
+		       COALESCE(name, '') as name, 
+		       COALESCE(base_token_symbol, '') as base_token_symbol, 
+		       chain_id, 
+		       COALESCE(network_logo, '') as network_logo, 
+		       COALESCE(network_logo_dark, '') as network_logo_dark, 
+		       COALESCE(favicon, '') as favicon, 
+		       COALESCE(explorer_url, '') as explorer_url, 
+		       created_at, 
+		       updated_at 
+		FROM %s WHERE chain_id = $1 LIMIT 1`, table)
+	rows, err := db.QueryContext(ctx, query, chainId)
 	if err != nil {
 		return fmt.Errorf("failed to query database: %w", err)
 	}
@@ -248,5 +273,16 @@ func (s *Subscription) InitialCheck(worker *worker.Worker) error {
 		return fmt.Errorf("error iterating rows: %w", err)
 	}
 
+	return nil
+}
+
+// safeIdentifier validates that a table name is safe for SQL queries
+// Only allows alphanumeric characters and underscores, starting with a letter or underscore
+func safeIdentifier(identifier string) error {
+	// Regex pattern for safe SQL identifiers: ^[a-zA-Z_][a-zA-Z0-9_]*$
+	safePattern := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+	if !safePattern.MatchString(identifier) {
+		return fmt.Errorf("unsafe table identifier: %s - only alphanumeric characters and underscores allowed, must start with letter or underscore", identifier)
+	}
 	return nil
 }

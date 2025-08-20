@@ -9,6 +9,8 @@ import (
 )
 
 // BlockscoutClient represents a client for interacting with Blockscout database
+// Note: COALESCE is used for symbol and name fields as they can be NULL in the Blockscout database schema.
+// Contract address matching uses case-insensitive comparison for better user experience.
 type BlockscoutClient struct {
 	db *sql.DB
 }
@@ -52,11 +54,13 @@ func (c *BlockscoutClient) Close() error {
 
 // GetTokens fetches all tokens from Blockscout database
 func (c *BlockscoutClient) GetTokens() ([]BlockscoutToken, error) {
-	// Get all tokens
+	// Get all tokens - use COALESCE to handle NULL values for symbol and name
 	query := `
-		SELECT regexp_replace(contract_address_hash::varchar, '^\\x', '0x'), symbol, name
+		SELECT regexp_replace(contract_address_hash::varchar, '^\\x', '0x'), 
+		       COALESCE(symbol, '') as symbol, 
+		       COALESCE(name, '') as name
 		FROM tokens
-		ORDER BY name ASC
+		ORDER BY COALESCE(name, '') ASC
 	`
 
 	rows, err := c.db.Query(query)
@@ -83,15 +87,26 @@ func (c *BlockscoutClient) GetTokens() ([]BlockscoutToken, error) {
 		tokens = append(tokens, token)
 	}
 
+	// Check for errors from iterating over rows
+	// This is crucial: rows.Err() catches errors that might occur during iteration
+	// that aren't caught by the individual rows.Scan() calls
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
 	return tokens, nil
 }
 
 // GetTokenByAddress fetches a specific token from Blockscout database by address
 func (c *BlockscoutClient) GetTokenByAddress(address string) (*BlockscoutToken, error) {
+	// Use COALESCE to handle NULL values for symbol and name
+	// Use case-insensitive comparison for contract address matching
 	query := `
-		SELECT regexp_replace(contract_address_hash::varchar, '^\\x', '0x'), symbol, name
+		SELECT regexp_replace(contract_address_hash::varchar, '^\\x', '0x'), 
+		       COALESCE(symbol, '') as symbol, 
+		       COALESCE(name, '') as name
 		FROM tokens
-		WHERE regexp_replace(contract_address_hash::varchar, '^\\x', '0x') = $1
+		WHERE lower(regexp_replace(contract_address_hash::varchar, '^\\x', '0x')) = lower($1)
 	`
 
 	var token BlockscoutToken
