@@ -496,6 +496,7 @@
                 </div>
                 
                 <form id="tokenForm">
+                    <input type="hidden" id="chainId" name="chainId" value="{{.ChainID}}">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="tokenAddress">Token Address *</label>
@@ -1201,9 +1202,9 @@
             document.addEventListener('click', function(e) {
                 if (e.target.classList.contains('edit-local-token-btn')) {
                     const tokenAddress = e.target.dataset.tokenAddress;
-                    const chainId = e.target.dataset.chainId;
-                    if (tokenAddress && chainId) {
-                        editLocalToken(tokenAddress, chainId);
+                            const chainId = e.target.dataset.chainId;
+        if (tokenAddress && chainId) {
+            editLocalToken(tokenAddress, chainId);
                     }
                 }
                 
