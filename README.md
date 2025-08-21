@@ -43,10 +43,9 @@ auth:
 
 #### 🔒 Protected Endpoints (Authentication Required)
 - `GET /` - Token Management Dashboard
-- `GET /api/v1/tokens/paginated` - List tokens with pagination
-- `POST /api/v1/tokens` - Create/update tokens
-- `GET /api/v1/blockscout/tokens` - Fetch Blockscout tokens
-- `GET /api/v1/blockscout/tokens/:address` - Search specific token
+- `GET /api/v1/tokens` - Get unified tokens (merged from both local and Blockscout databases)
+- `GET /api/v1/tokens/:tokenAddress` - Get unified token info by address
+- `POST /api/v1/tokens` - Create/update tokens (automatically syncs icon_url to Blockscout)
 
 #### 🌐 Public Endpoints (No Authentication Required)
 - `GET /api/v1/chains/:chainId/token-infos/:tokenAddress` - Get token information

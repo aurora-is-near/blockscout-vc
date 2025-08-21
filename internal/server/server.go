@@ -5,7 +5,6 @@ import (
 	"blockscout-vc/internal/database"
 	"blockscout-vc/internal/models"
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,14 +16,6 @@ import (
 
 	"blockscout-vc/internal/config"
 )
-
-// getStringValue safely extracts string value from sql.NullString
-func getStringValue(nullString sql.NullString) string {
-	if nullString.Valid {
-		return nullString.String
-	}
-	return ""
-}
 
 type Server struct {
 	app              *fiber.App
@@ -77,10 +68,9 @@ func NewServer() (*Server, error) {
 	protected := api.Group("")
 	protected.Use(authMiddleware())
 	{
-		protected.Get("/tokens", server.getAllTokens)
+		protected.Get("/tokens", server.getUnifiedTokens)
 		protected.Post("/tokens", server.upsertToken)
-		protected.Get("/blockscout/tokens", server.getBlockscoutTokens)
-		protected.Get("/blockscout/tokens/:tokenAddress", server.getBlockscoutTokenByAddress)
+		protected.Get("/tokens/:tokenAddress", server.getUnifiedTokenByAddress)
 	}
 
 	return server, nil
@@ -145,15 +135,15 @@ func (s *Server) getTokenInfo(c *fiber.Ctx) error {
 			"projectEmail":        token.ProjectEmail,
 			"iconUrl":             token.IconURL,
 			"projectDescription":  token.ProjectDescription,
-			"projectSector":       getStringValue(token.ProjectSector),
-			"docs":                getStringValue(token.Docs),
+			"projectSector":       token.ProjectSector,
+			"docs":                token.Docs,
 			"github":              token.Github,
 			"telegram":            token.Telegram,
 			"linkedin":            token.Linkedin,
 			"discord":             token.Discord,
 			"slack":               token.Slack,
 			"twitter":             token.Twitter,
-			"openSea":             getStringValue(token.OpenSea),
+			"openSea":             token.OpenSea,
 			"facebook":            token.Facebook,
 			"medium":              token.Medium,
 			"reddit":              token.Reddit,
@@ -209,17 +199,23 @@ func (s *Server) upsertToken(c *fiber.Ctx) error {
 	}
 
 	// Validate required fields
-	if form.TokenAddress == "" || form.ChainID == "" {
+	if form.TokenAddress == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Token address and chain ID are required",
+			"error": "Token address is required",
 		})
 	}
 
 	// Normalize token address (lowercase)
 	form.TokenAddress = strings.ToLower(form.TokenAddress)
+	form.ChainID = config.GetChainID()
 
-	// Use the database upsert function
-	err := s.database.UpsertTokenInfo(&form)
+	// Create callback function to sync icon_url changes to Blockscout
+	onIconURLUpdate := func(tokenAddress, iconURL string) error {
+		return s.blockscoutClient.UpdateTokenIconURL(tokenAddress, iconURL)
+	}
+
+	// Use the database upsert function with callback
+	err := s.database.UpsertTokenInfo(&form, onIconURLUpdate)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to save/update token info",
@@ -227,6 +223,7 @@ func (s *Server) upsertToken(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
+		"success": true,
 		"message": "Token saved/updated successfully",
 	})
 }
@@ -252,12 +249,23 @@ func (s *Server) tokenManagementPage(c *fiber.Ctx) error {
 	return c.SendString(htmlContent)
 }
 
-// getAllTokens returns all tokens
-func (s *Server) getAllTokens(c *fiber.Ctx) error {
-	tokens, err := s.database.GetAllTokens()
+// getUnifiedTokens returns all tokens with merged data from both local and Blockscout databases
+func (s *Server) getUnifiedTokens(c *fiber.Ctx) error {
+	// Get the configured chain ID
+	chainID := config.GetChainID()
+	if chainID == "" {
+		return c.Status(fiber.StatusInternalServerError).SendString("Chain ID not configured")
+	}
+
+	// Create callback functions for the database methods
+	getBlockscoutTokens := func() ([]client.BlockscoutToken, error) {
+		return s.blockscoutClient.GetTokens()
+	}
+
+	tokens, err := s.database.GetUnifiedTokens(chainID, getBlockscoutTokens)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to retrieve tokens",
+			"error": "Failed to retrieve unified tokens",
 		})
 	}
 
@@ -267,29 +275,24 @@ func (s *Server) getAllTokens(c *fiber.Ctx) error {
 	})
 }
 
-// getBlockscoutTokens fetches all tokens from Blockscout
-func (s *Server) getBlockscoutTokens(c *fiber.Ctx) error {
-	tokens, err := s.blockscoutClient.GetTokens()
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch tokens from Blockscout",
-		})
-	}
-
-	return c.JSON(fiber.Map{
-		"tokens": tokens,
-		"total":  len(tokens),
-	})
-}
-
-// getBlockscoutTokenByAddress fetches a specific token from Blockscout by address
-func (s *Server) getBlockscoutTokenByAddress(c *fiber.Ctx) error {
+// getUnifiedTokenByAddress returns a single token with merged data from both local and Blockscout databases
+func (s *Server) getUnifiedTokenByAddress(c *fiber.Ctx) error {
 	tokenAddress := c.Params("tokenAddress")
+	chainId := config.GetChainID()
 
-	token, err := s.blockscoutClient.GetTokenByAddress(tokenAddress)
+	// Normalize address to lowercase to match stored format
+	tokenAddress = strings.ToLower(tokenAddress)
+
+	// Create callback function for the database method
+	getBlockscoutToken := func(address string) (*client.BlockscoutToken, error) {
+		return s.blockscoutClient.GetTokenByAddress(address)
+	}
+
+	// Get unified token
+	token, err := s.database.GetUnifiedTokenByAddress(tokenAddress, chainId, getBlockscoutToken)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch token from Blockscout",
+			"error": "Failed to retrieve unified token info",
 		})
 	}
 
@@ -299,5 +302,36 @@ func (s *Server) getBlockscoutTokenByAddress(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(token)
+	// Create a clean response structure that handles null values properly
+	response := map[string]interface{}{
+		"tokenAddress":        token.TokenAddress,
+		"chainId":             token.ChainID,
+		"projectName":         token.ProjectName,
+		"projectWebsite":      token.ProjectWebsite,
+		"projectEmail":        token.ProjectEmail,
+		"iconUrl":             token.IconURL,
+		"projectDescription":  token.ProjectDescription,
+		"projectSector":       token.ProjectSector,
+		"docs":                token.Docs,
+		"github":              token.Github,
+		"telegram":            token.Telegram,
+		"linkedin":            token.Linkedin,
+		"discord":             token.Discord,
+		"slack":               token.Slack,
+		"twitter":             token.Twitter,
+		"openSea":             token.OpenSea,
+		"facebook":            token.Facebook,
+		"medium":              token.Medium,
+		"reddit":              token.Reddit,
+		"support":             token.Support,
+		"coinMarketCapTicker": token.CoinMarketCapTicker,
+		"coinGeckoTicker":     token.CoinGeckoTicker,
+		"defiLlamaTicker":     token.DefiLlamaTicker,
+		"tokenName":           token.TokenName,
+		"tokenSymbol":         token.TokenSymbol,
+		"hasLocalData":        token.HasLocalData,
+		"hasBlockscoutData":   token.HasBlockscoutData,
+	}
+
+	return c.JSON(response)
 }

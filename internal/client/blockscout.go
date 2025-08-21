@@ -20,6 +20,7 @@ type BlockscoutToken struct {
 	Address string `json:"address"`
 	Symbol  string `json:"symbol"`
 	Name    string `json:"name"`
+	IconURL string `json:"icon_url"`
 }
 
 // NewBlockscoutClient creates a new Blockscout client with direct database access
@@ -54,11 +55,12 @@ func (c *BlockscoutClient) Close() error {
 
 // GetTokens fetches all tokens from Blockscout database
 func (c *BlockscoutClient) GetTokens() ([]BlockscoutToken, error) {
-	// Get all tokens - use COALESCE to handle NULL values for symbol and name
+	// Get all tokens - use COALESCE to handle NULL values for symbol, name, and icon_url
 	query := `
 		SELECT regexp_replace(contract_address_hash::varchar, '^\\x', '0x'), 
 		       COALESCE(symbol, '') as symbol, 
-		       COALESCE(name, '') as name
+		       COALESCE(name, '') as name,
+		       COALESCE(icon_url, '') as icon_url
 		FROM tokens
 		ORDER BY COALESCE(name, '') ASC
 	`
@@ -80,6 +82,7 @@ func (c *BlockscoutClient) GetTokens() ([]BlockscoutToken, error) {
 			&token.Address,
 			&token.Symbol,
 			&token.Name,
+			&token.IconURL,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan token: %w", err)
@@ -99,12 +102,13 @@ func (c *BlockscoutClient) GetTokens() ([]BlockscoutToken, error) {
 
 // GetTokenByAddress fetches a specific token from Blockscout database by address
 func (c *BlockscoutClient) GetTokenByAddress(address string) (*BlockscoutToken, error) {
-	// Use COALESCE to handle NULL values for symbol and name
+	// Use COALESCE to handle NULL values for symbol, name, and icon_url
 	// Use case-insensitive comparison for contract address matching
 	query := `
 		SELECT regexp_replace(contract_address_hash::varchar, '^\\x', '0x'), 
 		       COALESCE(symbol, '') as symbol, 
-		       COALESCE(name, '') as name
+		       COALESCE(name, '') as name,
+		       COALESCE(icon_url, '') as icon_url
 		FROM tokens
 		WHERE lower(regexp_replace(contract_address_hash::varchar, '^\\x', '0x')) = lower($1)
 	`
@@ -114,6 +118,7 @@ func (c *BlockscoutClient) GetTokenByAddress(address string) (*BlockscoutToken, 
 		&token.Address,
 		&token.Symbol,
 		&token.Name,
+		&token.IconURL,
 	)
 
 	if err == sql.ErrNoRows {
@@ -124,4 +129,30 @@ func (c *BlockscoutClient) GetTokenByAddress(address string) (*BlockscoutToken, 
 	}
 
 	return &token, nil
+}
+
+// UpdateTokenIconURL updates the icon_url field for a specific token in Blockscout database
+func (c *BlockscoutClient) UpdateTokenIconURL(address, iconURL string) error {
+	// Use case-insensitive comparison for contract address matching
+	query := `
+		UPDATE tokens 
+		SET icon_url = $2, updated_at = CURRENT_TIMESTAMP
+		WHERE lower(regexp_replace(contract_address_hash::varchar, '^\\x', '0x')) = lower($1)
+	`
+
+	result, err := c.db.Exec(query, address, iconURL)
+	if err != nil {
+		return fmt.Errorf("failed to update token icon_url: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no token found with address: %s", address)
+	}
+
+	return nil
 }

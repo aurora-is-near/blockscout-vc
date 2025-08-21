@@ -5,6 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"sort"
+	"strings"
+
+	"blockscout-vc/internal/client"
 
 	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
@@ -145,8 +149,20 @@ func (d *Database) GetAllTokens() ([]models.TokenInfo, error) {
 
 // UpsertTokenInfo creates or updates token information using PostgreSQL upsert
 // Manually sets updated_at timestamp instead of relying on database triggers
-func (d *Database) UpsertTokenInfo(form *models.TokenInfoForm) error {
+// If onIconURLUpdate callback is provided, it will be called when icon_url is updated
+func (d *Database) UpsertTokenInfo(form *models.TokenInfoForm, onIconURLUpdate func(tokenAddress, iconURL string) error) error {
+	// Get current icon_url before update to check if it changed
+	var currentIconURL sql.NullString
 	query := `
+		SELECT icon_url FROM token_infos WHERE token_address = $1 AND chain_id = $2
+	`
+	err := d.db.QueryRow(query, form.TokenAddress, form.ChainID).Scan(&currentIconURL)
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("failed to get current icon_url: %w", err)
+	}
+
+	// Perform the upsert
+	upsertQuery := `
 		INSERT INTO token_infos (
 			token_address, chain_id, project_name, project_website, project_email,
 			icon_url, project_description, project_sector, docs, github, telegram,
@@ -185,7 +201,7 @@ func (d *Database) UpsertTokenInfo(form *models.TokenInfoForm) error {
 			updated_at = CURRENT_TIMESTAMP
 	`
 
-	_, err := d.db.Exec(query,
+	_, err = d.db.Exec(upsertQuery,
 		form.TokenAddress, form.ChainID, form.ProjectName, form.ProjectWebsite,
 		form.ProjectEmail, form.IconURL, form.ProjectDescription, form.ProjectSector,
 		form.Docs, form.Github, form.Telegram, form.Linkedin, form.Discord,
@@ -198,6 +214,201 @@ func (d *Database) UpsertTokenInfo(form *models.TokenInfoForm) error {
 		return fmt.Errorf("failed to upsert token info: %w", err)
 	}
 
+	// If icon_url changed and callback is provided, sync to Blockscout
+	if onIconURLUpdate != nil {
+		currentIconURLStr := ""
+		if currentIconURL.Valid {
+			currentIconURLStr = currentIconURL.String
+		}
+		if currentIconURLStr != form.IconURL {
+			if err := onIconURLUpdate(form.TokenAddress, form.IconURL); err != nil {
+				log.Printf("Warning: failed to sync icon_url to Blockscout: %v", err)
+				// Don't fail the entire operation if Blockscout sync fails
+			}
+		}
+	}
+
 	log.Printf("Upserted token: %s on chain %s", form.TokenAddress, form.ChainID)
 	return nil
+}
+
+// GetUnifiedTokens retrieves all tokens with merged data from both local and Blockscout databases
+// This method requires a callback to fetch Blockscout data since the database package shouldn't directly access Blockscout
+func (d *Database) GetUnifiedTokens(chainID string, getBlockscoutTokens func() ([]client.BlockscoutToken, error)) ([]models.UnifiedTokenInfo, error) {
+	// Get all local tokens
+	localTokens, err := d.GetAllTokens()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get local tokens: %w", err)
+	}
+
+	// Get all Blockscout tokens
+	blockscoutTokens, err := getBlockscoutTokens()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Blockscout tokens: %w", err)
+	}
+
+	// Create maps for efficient lookup
+	localTokenMap := make(map[string]*models.TokenInfo)
+	for i := range localTokens {
+		localTokenMap[localTokens[i].TokenAddress] = &localTokens[i]
+	}
+
+	blockscoutTokenMap := make(map[string]*client.BlockscoutToken)
+	for i := range blockscoutTokens {
+		blockscoutTokenMap[strings.ToLower(blockscoutTokens[i].Address)] = &blockscoutTokens[i]
+	}
+
+	// Create unified token set (use map to avoid duplicates)
+	unifiedMap := make(map[string]*models.UnifiedTokenInfo)
+
+	// Process local tokens
+	for _, localToken := range localTokens {
+		unified := &models.UnifiedTokenInfo{
+			TokenAddress:        localToken.TokenAddress,
+			ChainID:             localToken.ChainID,
+			ProjectName:         localToken.ProjectName,
+			ProjectWebsite:      localToken.ProjectWebsite,
+			ProjectEmail:        localToken.ProjectEmail,
+			IconURL:             localToken.IconURL,
+			ProjectDescription:  localToken.ProjectDescription,
+			ProjectSector:       localToken.ProjectSector,
+			Docs:                localToken.Docs,
+			Github:              localToken.Github,
+			Telegram:            localToken.Telegram,
+			Linkedin:            localToken.Linkedin,
+			Discord:             localToken.Discord,
+			Slack:               localToken.Slack,
+			Twitter:             localToken.Twitter,
+			OpenSea:             localToken.OpenSea,
+			Facebook:            localToken.Facebook,
+			Medium:              localToken.Medium,
+			Reddit:              localToken.Reddit,
+			Support:             localToken.Support,
+			CoinMarketCapTicker: localToken.CoinMarketCapTicker,
+			CoinGeckoTicker:     localToken.CoinGeckoTicker,
+			DefiLlamaTicker:     localToken.DefiLlamaTicker,
+			TokenName:           localToken.TokenName,
+			TokenSymbol:         localToken.TokenSymbol,
+			HasLocalData:        true,
+			HasBlockscoutData:   false,
+		}
+
+		// Check if there's Blockscout data for this token
+		if blockscoutToken, exists := blockscoutTokenMap[strings.ToLower(localToken.TokenAddress)]; exists {
+			unified.HasBlockscoutData = true
+
+			// If local doesn't have icon_url but Blockscout does, use Blockscout's
+			if unified.IconURL == "" && blockscoutToken.IconURL != "" {
+				unified.IconURL = blockscoutToken.IconURL
+			}
+
+			// If local doesn't have basic token info, use Blockscout's
+			if unified.TokenName == "" {
+				unified.TokenName = blockscoutToken.Name
+			}
+			if unified.TokenSymbol == "" {
+				unified.TokenSymbol = blockscoutToken.Symbol
+			}
+		}
+
+		unifiedMap[localToken.TokenAddress] = unified
+	}
+
+	// Process Blockscout tokens that don't have local data
+	for _, blockscoutToken := range blockscoutTokens {
+		address := strings.ToLower(blockscoutToken.Address)
+		if _, exists := localTokenMap[address]; !exists {
+			unified := &models.UnifiedTokenInfo{
+				TokenAddress:      address,
+				ChainID:           chainID, // Use the provided chainID parameter
+				IconURL:           blockscoutToken.IconURL,
+				TokenName:         blockscoutToken.Name,
+				TokenSymbol:       blockscoutToken.Symbol,
+				HasLocalData:      false,
+				HasBlockscoutData: true,
+			}
+			unifiedMap[address] = unified
+		}
+	}
+
+	// Convert map to slice
+	var unifiedTokens []models.UnifiedTokenInfo
+	for _, unified := range unifiedMap {
+		unifiedTokens = append(unifiedTokens, *unified)
+	}
+
+	// Sort by token address for consistent ordering
+	sort.Slice(unifiedTokens, func(i, j int) bool {
+		return unifiedTokens[i].TokenAddress < unifiedTokens[j].TokenAddress
+	})
+
+	return unifiedTokens, nil
+}
+
+// GetUnifiedTokenByAddress retrieves a single token with merged data from both local and Blockscout databases
+func (d *Database) GetUnifiedTokenByAddress(tokenAddress, chainID string, getBlockscoutToken func(address string) (*client.BlockscoutToken, error)) (*models.UnifiedTokenInfo, error) {
+	// Get local token
+	localToken, err := d.GetTokenInfo(tokenAddress, chainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get local token: %w", err)
+	}
+
+	// Get Blockscout token
+	blockscoutToken, err := getBlockscoutToken(tokenAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Blockscout token: %w", err)
+	}
+
+	// Create unified token
+	unified := &models.UnifiedTokenInfo{
+		TokenAddress:      tokenAddress,
+		ChainID:           chainID,
+		HasLocalData:      localToken != nil,
+		HasBlockscoutData: blockscoutToken != nil,
+	}
+
+	// Fill in local data if available
+	if localToken != nil {
+		unified.ProjectName = localToken.ProjectName
+		unified.ProjectWebsite = localToken.ProjectWebsite
+		unified.ProjectEmail = localToken.ProjectEmail
+		unified.IconURL = localToken.IconURL
+		unified.ProjectDescription = localToken.ProjectDescription
+		unified.ProjectSector = localToken.ProjectSector
+		unified.Docs = localToken.Docs
+		unified.Github = localToken.Github
+		unified.Telegram = localToken.Telegram
+		unified.Linkedin = localToken.Linkedin
+		unified.Discord = localToken.Discord
+		unified.Slack = localToken.Slack
+		unified.Twitter = localToken.Twitter
+		unified.OpenSea = localToken.OpenSea
+		unified.Facebook = localToken.Facebook
+		unified.Medium = localToken.Medium
+		unified.Reddit = localToken.Reddit
+		unified.Support = localToken.Support
+		unified.CoinMarketCapTicker = localToken.CoinMarketCapTicker
+		unified.CoinGeckoTicker = localToken.CoinGeckoTicker
+		unified.DefiLlamaTicker = localToken.DefiLlamaTicker
+		unified.TokenName = localToken.TokenName
+		unified.TokenSymbol = localToken.TokenSymbol
+	}
+
+	// Fill in Blockscout data if available (merge into main fields)
+	if blockscoutToken != nil {
+		// If local doesn't have icon_url but Blockscout does, use Blockscout's
+		if unified.IconURL == "" && blockscoutToken.IconURL != "" {
+			unified.IconURL = blockscoutToken.IconURL
+		}
+
+		// If local doesn't have basic token info, use Blockscout's
+		if unified.TokenName == "" {
+			unified.TokenName = blockscoutToken.Name
+		}
+		if unified.TokenSymbol == "" {
+			unified.TokenSymbol = blockscoutToken.Symbol
+		}
+	}
+
+	return unified, nil
 }
