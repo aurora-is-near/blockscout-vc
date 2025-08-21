@@ -1,36 +1,32 @@
 package models
 
-import (
-	"database/sql"
-)
-
 // TokenInfo represents the token information structure
 type TokenInfo struct {
-	TokenAddress        string         `json:"tokenAddress" db:"token_address"`
-	ChainID             string         `json:"chainId" db:"chain_id"`
-	ProjectName         string         `json:"projectName" db:"project_name"`
-	ProjectWebsite      string         `json:"projectWebsite" db:"project_website"`
-	ProjectEmail        string         `json:"projectEmail" db:"project_email"`
-	IconURL             string         `json:"iconUrl" db:"icon_url"`
-	ProjectDescription  string         `json:"projectDescription" db:"project_description"`
-	ProjectSector       sql.NullString `json:"projectSector" db:"project_sector"`
-	Docs                sql.NullString `json:"docs" db:"docs"`
-	Github              string         `json:"github" db:"github"`
-	Telegram            string         `json:"telegram" db:"telegram"`
-	Linkedin            string         `json:"linkedin" db:"linkedin"`
-	Discord             string         `json:"discord" db:"discord"`
-	Slack               string         `json:"slack" db:"slack"`
-	Twitter             string         `json:"twitter" db:"twitter"`
-	OpenSea             sql.NullString `json:"openSea" db:"opensea"`
-	Facebook            string         `json:"facebook" db:"facebook"`
-	Medium              string         `json:"medium" db:"medium"`
-	Reddit              string         `json:"reddit" db:"reddit"`
-	Support             string         `json:"support" db:"support"`
-	CoinMarketCapTicker string         `json:"coinMarketCapTicker" db:"coin_market_cap_ticker"`
-	CoinGeckoTicker     string         `json:"coinGeckoTicker" db:"coin_gecko_ticker"`
-	DefiLlamaTicker     string         `json:"defiLlamaTicker" db:"defi_llama_ticker"`
-	TokenName           string         `json:"tokenName" db:"token_name"`
-	TokenSymbol         string         `json:"tokenSymbol" db:"token_symbol"`
+	TokenAddress        string `json:"tokenAddress" db:"token_address"`
+	ChainID             string `json:"chainId" db:"chain_id"`
+	ProjectName         string `json:"projectName" db:"project_name"`
+	ProjectWebsite      string `json:"projectWebsite" db:"project_website"`
+	ProjectEmail        string `json:"projectEmail" db:"project_email"`
+	IconURL             string `json:"iconUrl" db:"icon_url"`
+	ProjectDescription  string `json:"projectDescription" db:"project_description"`
+	ProjectSector       string `json:"projectSector" db:"project_sector"`
+	Docs                string `json:"docs" db:"docs"`
+	Github              string `json:"github" db:"github"`
+	Telegram            string `json:"telegram" db:"telegram"`
+	Linkedin            string `json:"linkedin" db:"linkedin"`
+	Discord             string `json:"discord" db:"discord"`
+	Slack               string `json:"slack" db:"slack"`
+	Twitter             string `json:"twitter" db:"twitter"`
+	OpenSea             string `json:"openSea" db:"opensea"`
+	Facebook            string `json:"facebook" db:"facebook"`
+	Medium              string `json:"medium" db:"medium"`
+	Reddit              string `json:"reddit" db:"reddit"`
+	Support             string `json:"support" db:"support"`
+	CoinMarketCapTicker string `json:"coinMarketCapTicker" db:"coin_market_cap_ticker"`
+	CoinGeckoTicker     string `json:"coinGeckoTicker" db:"coin_gecko_ticker"`
+	DefiLlamaTicker     string `json:"defiLlamaTicker" db:"defi_llama_ticker"`
+	TokenName           string `json:"tokenName" db:"token_name"`
+	TokenSymbol         string `json:"tokenSymbol" db:"token_symbol"`
 }
 
 // TokenInfoForm represents the form data for creating/updating tokens
@@ -60,4 +56,36 @@ type TokenInfoForm struct {
 	DefiLlamaTicker     string `json:"defiLlamaTicker" form:"defiLlamaTicker"`
 	TokenName           string `json:"tokenName" form:"tokenName"`
 	TokenSymbol         string `json:"tokenSymbol" form:"tokenSymbol"`
+}
+
+// UnifiedTokenInfo represents a merged view of token information from both Blockscout and local databases
+type UnifiedTokenInfo struct {
+	TokenAddress        string `json:"tokenAddress" db:"token_address"`
+	ChainID             string `json:"chainId" db:"chain_id"`
+	ProjectName         string `json:"projectName" db:"project_name"`
+	ProjectWebsite      string `json:"projectWebsite" db:"project_website"`
+	ProjectEmail        string `json:"projectEmail" db:"project_email"`
+	IconURL             string `json:"iconUrl" db:"icon_url"`
+	ProjectDescription  string `json:"projectDescription" db:"project_description"`
+	ProjectSector       string `json:"projectSector" db:"project_sector"`
+	Docs                string `json:"docs" db:"docs"`
+	Github              string `json:"github" db:"github"`
+	Telegram            string `json:"telegram" db:"telegram"`
+	Linkedin            string `json:"linkedin" db:"linkedin"`
+	Discord             string `json:"discord" db:"discord"`
+	Slack               string `json:"slack" db:"slack"`
+	Twitter             string `json:"twitter" db:"twitter"`
+	OpenSea             string `json:"openSea" db:"opensea"`
+	Facebook            string `json:"facebook" db:"facebook"`
+	Medium              string `json:"medium" db:"medium"`
+	Reddit              string `json:"reddit" db:"reddit"`
+	Support             string `json:"support" db:"support"`
+	CoinMarketCapTicker string `json:"coinMarketCapTicker" db:"coin_market_cap_ticker"`
+	CoinGeckoTicker     string `json:"coinGeckoTicker" db:"coin_gecko_ticker"`
+	DefiLlamaTicker     string `json:"defiLlamaTicker" db:"defi_llama_ticker"`
+	TokenName           string `json:"tokenName" db:"token_name"`
+	TokenSymbol         string `json:"tokenSymbol" db:"token_symbol"`
+	// Metadata
+	HasLocalData      bool `json:"hasLocalData" db:"has_local_data"`
+	HasBlockscoutData bool `json:"hasBlockscoutData" db:"has_blockscout_data"`
 }
