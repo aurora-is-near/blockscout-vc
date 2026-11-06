@@ -70,10 +70,29 @@ func (h *ExplorerHandler) Handle(record *Record) HandlerResult {
 		"BLOCKSCOUT_HTTP_PROTOCOL":           protocol,
 	}
 
+	if err := h.env.ReadEnvFile(); err != nil {
+		result.Error = fmt.Errorf("failed to read sidecar-injected environment: %w", err)
+		return result
+	}
+	explorerSettingsChanged := false
+	for key, value := range sidecarUpdates {
+		if key != "NEXT_PUBLIC_FEATURED_NETWORKS" && h.env.EnvFile[key] != value {
+			explorerSettingsChanged = true
+			break
+		}
+	}
+
 	// Apply updates to the sidecar-injected.env file
 	updated, err := h.UpdateEnvFile(sidecarUpdates)
 	if err != nil {
 		result.Error = fmt.Errorf("failed to update sidecar-injected environment: %w", err)
+		return result
+	}
+
+	if updated && !explorerSettingsChanged {
+		result.ContainersToRestart = []docker.Container{
+			{Name: frontendContainerName, ServiceName: frontendServiceName},
+		}
 		return result
 	}
 

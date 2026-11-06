@@ -202,10 +202,10 @@ blockscout-vc/
 
 The sidecar service includes several handlers that respond to database changes:
 
-- **Name Handler**: Updates network name and featured networks configuration
+- **Name Handler**: Updates the network name and short name
 - **Coin Handler**: Updates cryptocurrency symbol and related settings
 - **Image Handler**: Updates logo and favicon URLs
-- **Explorer Handler**: Updates explorer URL and related environment variables
+- **Explorer Handler**: Updates the explorer URL, featured networks and related environment variables
 
 ### Explorer Handler
 
@@ -222,7 +222,8 @@ The Explorer Handler monitors changes to the `explorer_url` field in the databas
 - `EXPLORER_URL`: Explorer host for nginx configuration
 - `BLOCKSCOUT_HTTP_PROTOCOL`: Protocol (http/https) for nginx configuration
 
-When the explorer URL changes, all affected services (backend, frontend, stats, proxy) are automatically restarted.
+Explorer host or protocol changes recreate backend, frontend and stats. The sidecar also recreates the proxy when configured.
+Network name changes recreate only the frontend. Unchanged metadata does not recreate containers.
 
 ## Debugging
 
